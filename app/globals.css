@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --spotify-green: #1DB954;
+  --remove: #E91E8C;
+  --bg: #0A0A0A;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  background-color: var(--bg);
+  color: white;
+  font-family: 'Inter', system-ui, sans-serif;
+  overscroll-behavior: none;
+}
+
+/* Prevent text selection during swipe */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+/* Animated bars inline fallback using style injection */
+@keyframes bar1 {
+  0%, 100% { height: 8px; }
+  50% { height: 28px; }
+}
+@keyframes bar2 {
+  0%, 100% { height: 16px; }
+  50% { height: 40px; }
+}
+@keyframes bar3 {
+  0%, 100% { height: 12px; }
+  50% { height: 36px; }
+}
+@keyframes bar4 {
+  0%, 100% { height: 20px; }
+  50% { height: 32px; }
+}
+@keyframes bar5 {
+  0%, 100% { height: 10px; }
+  50% { height: 24px; }
+}
