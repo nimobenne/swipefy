@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { motion, MotionValue, useTransform } from "framer-motion";
+import { motion, MotionValue, useTransform, useMotionValue } from "framer-motion";
 import { SpotifyTrack } from "@/types";
 import AudioVisualizer from "./AudioVisualizer";
 
@@ -12,13 +12,14 @@ interface SongCardProps {
 }
 
 export default function SongCard({ track, playing, progress, overlayX }: SongCardProps) {
-  const albumArt = track.album.images[0]?.url ?? "/placeholder.png";
+  const albumArt = track.album.images[0]?.url ?? "";
   const artist = track.artists.map((a) => a.name).join(", ");
   const hasPreview = !!track.preview_url;
 
-  // Derive overlay opacities from drag position
-  const keepOpacity = useTransform(overlayX ?? { get: () => 0 } as MotionValue<number>, [20, 110], [0, 1]);
-  const removeOpacity = useTransform(overlayX ?? { get: () => 0 } as MotionValue<number>, [-110, -20], [1, 0]);
+  const fallbackX = useMotionValue(0);
+  const effectiveX = overlayX ?? fallbackX;
+  const keepOpacity = useTransform(effectiveX, [20, 110], [0, 1]);
+  const removeOpacity = useTransform(effectiveX, [-110, -20], [1, 0]);
 
   return (
     <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl select-none bg-card-bg">
