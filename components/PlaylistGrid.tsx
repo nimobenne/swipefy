@@ -77,7 +77,7 @@ export default function PlaylistGrid({ playlists, onSelect, loading }: PlaylistG
                 {playlist.name}
               </p>
               <p className="text-white/50 text-xs mt-0.5">
-                {playlist.tracks.total} tracks
+                {playlist.tracks?.total ?? 0} tracks
               </p>
             </div>
 
