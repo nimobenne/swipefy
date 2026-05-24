@@ -44,19 +44,21 @@ interface TracksPage {
 export async function getPlaylistTracks(
   accessToken: string,
   playlistId: string
-): Promise<SpotifyTrack[]> {
+): Promise<{ tracks: SpotifyTrack[]; debug: unknown }> {
   const tracks: SpotifyTrack[] = [];
   let url: string | null = `/playlists/${playlistId}/items?limit=100`;
+  let firstPage: unknown = null;
 
   while (url) {
     const page: TracksPage = await spotifyFetch<TracksPage>(url, accessToken);
+    if (!firstPage) firstPage = { total: page.items?.length, first: page.items?.[0] };
     for (const item of page.items) {
       if (item.track?.id) tracks.push(item.track);
     }
     url = page.next;
   }
 
-  return tracks;
+  return { tracks, debug: firstPage };
 }
 
 export async function removeTrackFromPlaylist(
