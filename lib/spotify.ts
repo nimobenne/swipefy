@@ -46,8 +46,7 @@ export async function getPlaylistTracks(
   playlistId: string
 ): Promise<SpotifyTrack[]> {
   const tracks: SpotifyTrack[] = [];
-  let url: string | null =
-    `/playlists/${playlistId}/tracks?limit=100&fields=next,items(track(id,name,artists(id,name),album(id,name,images),preview_url,duration_ms))`;
+  let url: string | null = `/playlists/${playlistId}/tracks?limit=100`;
 
   while (url) {
     const page: TracksPage = await spotifyFetch<TracksPage>(url, accessToken);
