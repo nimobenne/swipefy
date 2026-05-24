@@ -12,7 +12,7 @@ interface SongCardProps {
 }
 
 export default function SongCard({ track, playing, progress, overlayX }: SongCardProps) {
-  const albumArt = track.album.images[0]?.url ?? "";
+  const albumArt = track.album.images[0]?.url ?? null;
   const artist = track.artists.map((a) => a.name).join(", ");
   const hasPreview = !!track.preview_url;
 
@@ -24,14 +24,18 @@ export default function SongCard({ track, playing, progress, overlayX }: SongCar
   return (
     <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl select-none bg-card-bg">
       {/* Album Art */}
-      <Image
-        src={albumArt}
-        alt={track.name}
-        fill
-        className="object-cover"
-        draggable={false}
-        priority
-      />
+      {albumArt ? (
+        <Image
+          src={albumArt}
+          alt={track.name}
+          fill
+          className="object-cover"
+          draggable={false}
+          priority
+        />
+      ) : (
+        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #1a1a2e, #16213e, #0f3460)" }} />
+      )}
 
       {/* Dark gradient */}
       <div className="absolute inset-0 bg-card-gradient" />
