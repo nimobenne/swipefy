@@ -50,6 +50,7 @@ export const authOptions: AuthOptions = {
         params: {
           scope: SPOTIFY_SCOPES,
           redirect_uri: `${process.env.NEXTAUTH_URL}/api/auth/callback/spotify`,
+          show_dialog: true,
         },
       },
     }),
