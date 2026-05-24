@@ -1,4 +1,4 @@
-import { SpotifyTrack, SpotifyPlaylist } from "@/types";
+import { SpotifyTrack, SpotifyPlaylist, SpotifyArtist, SpotifyAlbum } from "@/types";
 
 async function spotifyFetch<T>(
   endpoint: string,
