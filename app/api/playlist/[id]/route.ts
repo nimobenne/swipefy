@@ -15,8 +15,8 @@ export async function GET(
   const { id } = await params;
 
   try {
-    const { tracks, debug } = await getPlaylistTracks(session.accessToken, id);
-    return NextResponse.json({ tracks, debug });
+    const tracks = await getPlaylistTracks(session.accessToken, id);
+    return NextResponse.json({ tracks });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: msg }, { status: 500 });

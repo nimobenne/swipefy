@@ -37,28 +37,26 @@ export async function getUserPlaylists(
 }
 
 interface TracksPage {
-  items: { track: SpotifyTrack | null }[];
+  items: { item: SpotifyTrack | null }[];
   next: string | null;
 }
 
 export async function getPlaylistTracks(
   accessToken: string,
   playlistId: string
-): Promise<{ tracks: SpotifyTrack[]; debug: unknown }> {
+): Promise<SpotifyTrack[]> {
   const tracks: SpotifyTrack[] = [];
   let url: string | null = `/playlists/${playlistId}/items?limit=100`;
-  let firstPage: unknown = null;
 
   while (url) {
     const page: TracksPage = await spotifyFetch<TracksPage>(url, accessToken);
-    if (!firstPage) firstPage = { total: page.items?.length, first: page.items?.[0] };
     for (const item of page.items) {
-      if (item.track?.id) tracks.push(item.track);
+      if (item.item?.id) tracks.push(item.item);
     }
     url = page.next;
   }
 
-  return { tracks, debug: firstPage };
+  return tracks;
 }
 
 export async function removeTrackFromPlaylist(
