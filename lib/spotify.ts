@@ -36,8 +36,18 @@ export async function getUserPlaylists(
   return data.items.filter(Boolean);
 }
 
+interface RawItem {
+  id?: string | null;
+  name?: string;
+  artists?: SpotifyArtist[];
+  album?: SpotifyAlbum;
+  preview_url?: string | null;
+  duration_ms?: number;
+  type?: string;
+}
+
 interface TracksPage {
-  items: { item: SpotifyTrack | null }[];
+  items: { item?: RawItem | null; track?: RawItem | null }[];
   next: string | null;
 }
 
@@ -50,8 +60,18 @@ export async function getPlaylistTracks(
 
   while (url) {
     const page: TracksPage = await spotifyFetch<TracksPage>(url, accessToken);
-    for (const item of page.items) {
-      if (item.item?.id) tracks.push(item.item);
+    for (const raw of page.items) {
+      const t = raw.item ?? raw.track;
+      if (t?.id && t.name && t.artists && t.album && t.type === "track") {
+        tracks.push({
+          id: t.id,
+          name: t.name,
+          artists: t.artists,
+          album: t.album,
+          preview_url: t.preview_url ?? null,
+          duration_ms: t.duration_ms ?? 0,
+        });
+      }
     }
     url = page.next;
   }
