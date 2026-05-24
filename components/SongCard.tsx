@@ -25,16 +25,15 @@ export default function SongCard({ track, playing, progress, overlayX }: SongCar
     <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl select-none bg-card-bg">
       {/* Album Art */}
       {albumArt ? (
-        <Image
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
           src={albumArt}
           alt={track.name}
-          fill
-          className="object-cover"
+          className="absolute inset-0 w-full h-full object-cover"
           draggable={false}
-          priority
         />
       ) : (
-        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #1a1a2e, #16213e, #0f3460)" }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #1DB954, #191414)" }} />
       )}
 
       {/* Dark gradient */}
