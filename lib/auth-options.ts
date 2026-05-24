@@ -46,7 +46,10 @@ export const authOptions: AuthOptions = {
       clientId: process.env.SPOTIFY_CLIENT_ID!,
       clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
       authorization: {
-        params: { scope: SPOTIFY_SCOPES },
+        params: {
+          scope: SPOTIFY_SCOPES,
+          redirect_uri: `${process.env.NEXTAUTH_URL}/api/auth/callback/spotify`,
+        },
       },
     }),
   ],
