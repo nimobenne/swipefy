@@ -3,11 +3,18 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth-options";
 import { getServiceClient } from "@/lib/supabase";
 
+const hasSupabase = !!(
+  process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  if (!hasSupabase) return NextResponse.json({ success: true });
 
   const { trackId, trackName, artistName, direction, playlistId, sessionId } =
     await req.json();
@@ -34,6 +41,8 @@ export async function PUT(req: Request) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  if (!hasSupabase) return NextResponse.json({ sessionId: null });
 
   const { playlistId, playlistName } = await req.json();
   const db = getServiceClient();
