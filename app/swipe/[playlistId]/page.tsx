@@ -84,7 +84,7 @@ export default function SwipePage({ params }: PageProps) {
 
   const progressPct = Math.round(progress * 100);
 
-  if (status === "loading" || loading || !sessionReady) {
+  if (status === "loading" || loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <div className="w-10 h-10 rounded-full border-2 border-spotify-green border-t-transparent animate-spin" />
@@ -167,11 +167,21 @@ export default function SwipePage({ params }: PageProps) {
               thirdTrack={thirdTrack}
               onSwipe={swipe}
             />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <div className="w-8 h-8 rounded-full border-2 border-spotify-green border-t-transparent animate-spin" />
+          ) : tracks.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6">
+              <p className="text-4xl">🎵</p>
+              <p className="text-white font-bold">No swipeable tracks</p>
+              <p className="text-subtext text-sm">
+                This playlist has no tracks with previews, or contains only podcasts.
+              </p>
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="mt-2 px-5 py-2.5 rounded-xl bg-white/10 text-white text-sm font-semibold"
+              >
+                Pick another playlist
+              </button>
             </div>
-          )}
+          ) : null}
         </AnimatePresence>
 
         {/* Dopamine overlay sits on top of card */}
