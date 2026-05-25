@@ -141,7 +141,7 @@ export default function SwipePage({ params }: PageProps) {
       </div>
 
       {/* Card stack */}
-      <div className="relative flex-1 min-h-0" style={{ height: "calc(100vh - 280px)", maxHeight: 520 }}>
+      <div className="relative w-full" style={{ height: 440 }}>
         <AnimatePresence>
           {currentTrack ? (
             <SwipeStack

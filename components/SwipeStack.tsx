@@ -105,7 +105,7 @@ const SwipeStack = forwardRef<SwipeStackHandle, SwipeStackProps>(
     if (!currentTrack) return null;
 
     return (
-      <div className="relative w-full h-full" style={{ perspective: 1200 }}>
+      <div className="relative w-full" style={{ height: "100%", perspective: 1200 }}>
         {/* Third card */}
         {thirdTrack && (
           <div className="absolute inset-0 rounded-3xl overflow-hidden opacity-30 scale-[0.88] -translate-y-8 pointer-events-none">
