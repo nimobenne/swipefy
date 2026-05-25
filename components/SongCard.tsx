@@ -23,6 +23,16 @@ export default function SongCard({ track, playing, progress, overlayX }: SongCar
 
   return (
     <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl select-none bg-card-bg">
+      {/* No-preview badge */}
+      {!hasPreview && (
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1 pointer-events-none">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-white/50">
+            <path d="M4.27 3L3 4.27l9 9v.28c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4v-1.73L19.73 21 21 19.73 4.27 3zM14 7h4V3h-6v5.18l2 2V7z" />
+          </svg>
+          <span className="text-white/50 text-[10px] font-semibold tracking-wide uppercase">No preview</span>
+        </div>
+      )}
+
       {/* Album Art */}
       {albumArt ? (
         // eslint-disable-next-line @next/next/no-img-element

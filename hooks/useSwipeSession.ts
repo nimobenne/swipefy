@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { SpotifyTrack, SwipeDirection, StreakState, DopamineEvent } from "@/types";
 
 interface UseSwipeSessionProps {
@@ -7,6 +7,23 @@ interface UseSwipeSessionProps {
   playlistId: string;
   sessionId: string | null;
   onComplete: (kept: SpotifyTrack[], removed: SpotifyTrack[]) => void;
+}
+
+function fireRemoveRequest(playlistId: string, trackId: string) {
+  const body = JSON.stringify({ trackId });
+  fetch(`/api/playlist/${playlistId}/remove`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body,
+  }).catch(() => {
+    setTimeout(() => {
+      fetch(`/api/playlist/${playlistId}/remove`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body,
+      }).catch(() => console.warn("[Swipefy] Failed to remove track from Spotify:", trackId));
+    }, 1500);
+  });
 }
 
 export function useSwipeSession({
@@ -20,7 +37,23 @@ export function useSwipeSession({
   const [removed, setRemoved] = useState<SpotifyTrack[]>([]);
   const [streak, setStreak] = useState<StreakState>({ type: "keep", count: 0 });
   const [dopamineEvent, setDopamineEvent] = useState<DopamineEvent>(null);
+  const [pendingRemoval, setPendingRemoval] = useState<SpotifyTrack | null>(null);
   const processingRef = useRef(false);
+  const pendingRemovalRef = useRef<{
+    track: SpotifyTrack;
+    timeoutId: ReturnType<typeof setTimeout>;
+  } | null>(null);
+
+  // Flush pending removal on unmount (user navigated away mid-session)
+  useEffect(() => {
+    return () => {
+      if (pendingRemovalRef.current) {
+        clearTimeout(pendingRemovalRef.current.timeoutId);
+        fireRemoveRequest(playlistId, pendingRemovalRef.current.track.id);
+        pendingRemovalRef.current = null;
+      }
+    };
+  }, [playlistId]);
 
   const triggerDopamine = useCallback((event: DopamineEvent) => {
     setDopamineEvent(event);
@@ -42,21 +75,23 @@ export function useSwipeSession({
         setKept((prev) => [...prev, track]);
       } else {
         setRemoved((prev) => [...prev, track]);
-        // Remove from Spotify — retry once on failure
-        const removeBody = JSON.stringify({ trackId: track.id });
-        fetch(`/api/playlist/${playlistId}/remove`, {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: removeBody,
-        }).catch(() => {
-          setTimeout(() => {
-            fetch(`/api/playlist/${playlistId}/remove`, {
-              method: "DELETE",
-              headers: { "Content-Type": "application/json" },
-              body: removeBody,
-            }).catch(() => console.warn("[Swipefy] Failed to remove track from Spotify:", track.id));
-          }, 1500);
-        });
+
+        // Flush any previous pending removal before queuing the new one
+        if (pendingRemovalRef.current) {
+          clearTimeout(pendingRemovalRef.current.timeoutId);
+          fireRemoveRequest(playlistId, pendingRemovalRef.current.track.id);
+          pendingRemovalRef.current = null;
+        }
+
+        // Buffer this removal — user has 4s to undo
+        const timeoutId = setTimeout(() => {
+          fireRemoveRequest(playlistId, track.id);
+          pendingRemovalRef.current = null;
+          setPendingRemoval(null);
+        }, 4000);
+
+        pendingRemovalRef.current = { track, timeoutId };
+        setPendingRemoval(track);
       }
 
       // Save swipe to Supabase (fire-and-forget)
@@ -93,6 +128,14 @@ export function useSwipeSession({
 
       const nextIndex = currentIndex + 1;
       if (nextIndex >= tracks.length) {
+        // Flush pending removal before navigating to results
+        if (pendingRemovalRef.current) {
+          clearTimeout(pendingRemovalRef.current.timeoutId);
+          fireRemoveRequest(playlistId, pendingRemovalRef.current.track.id);
+          pendingRemovalRef.current = null;
+          setPendingRemoval(null);
+        }
+
         setTimeout(() => {
           onComplete(
             direction === "keep" ? [...kept, track] : kept,
@@ -110,6 +153,15 @@ export function useSwipeSession({
     [currentIndex, tracks, kept, removed, playlistId, sessionId, onComplete, triggerDopamine]
   );
 
+  const undoRemove = useCallback(() => {
+    if (!pendingRemovalRef.current) return;
+    const { track: undoneTrack, timeoutId } = pendingRemovalRef.current;
+    clearTimeout(timeoutId);
+    pendingRemovalRef.current = null;
+    setPendingRemoval(null);
+    setRemoved((prev) => prev.filter((t) => t.id !== undoneTrack.id));
+  }, []);
+
   const currentTrack = tracks[currentIndex] ?? null;
   const nextTrack = tracks[currentIndex + 1] ?? null;
   const thirdTrack = tracks[currentIndex + 2] ?? null;
@@ -126,6 +178,8 @@ export function useSwipeSession({
     removed,
     streak,
     dopamineEvent,
+    pendingRemoval,
+    undoRemove,
     swipe,
   };
 }

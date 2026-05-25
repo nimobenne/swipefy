@@ -74,6 +74,8 @@ export default function SwipePage({ params }: PageProps) {
     removed,
     streak,
     dopamineEvent,
+    pendingRemoval,
+    undoRemove,
     swipe,
   } = useSwipeSession({
     tracks,
@@ -187,6 +189,33 @@ export default function SwipePage({ params }: PageProps) {
         {/* Dopamine overlay sits on top of card */}
         <DopamineOverlay event={dopamineEvent} />
       </div>
+
+      {/* Undo toast */}
+      <AnimatePresence>
+        {pendingRemoval && (
+          <motion.div
+            key="undo-toast"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="fixed bottom-28 left-0 right-0 flex justify-center px-4 z-50 pointer-events-none"
+          >
+            <div className="flex items-center gap-3 bg-neutral-900/95 border border-white/10 rounded-2xl px-4 py-3 shadow-2xl max-w-sm w-full pointer-events-auto">
+              <div className="flex-1 min-w-0">
+                <p className="text-white/50 text-xs">Removed from playlist</p>
+                <p className="text-white text-sm font-semibold truncate">{pendingRemoval.name}</p>
+              </div>
+              <button
+                onClick={undoRemove}
+                className="text-spotify-green font-bold text-sm shrink-0 px-2"
+              >
+                Undo
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Action buttons */}
       <div className="mt-6">
