@@ -24,11 +24,12 @@ export default function SwipePage({ params }: PageProps) {
 
   const [tracks, setTracks] = useState<SpotifyTrack[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sessionReady, setSessionReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const stackRef = useRef<SwipeStackHandle>(null);
 
-  // Create Supabase session
+  // Create Supabase session — must resolve before swipes start so session_id is never null
   useEffect(() => {
     fetch("/api/swipe", {
       method: "PUT",
@@ -36,8 +37,11 @@ export default function SwipePage({ params }: PageProps) {
       body: JSON.stringify({ playlistId, playlistName }),
     })
       .then((r) => r.json())
-      .then((d) => d.sessionId && setSessionId(d.sessionId))
-      .catch(() => {});
+      .then((d) => {
+        if (d.sessionId) setSessionId(d.sessionId);
+      })
+      .catch(() => {})
+      .finally(() => setSessionReady(true));
   }, [playlistId, playlistName]);
 
   // Load tracks
@@ -80,7 +84,7 @@ export default function SwipePage({ params }: PageProps) {
 
   const progressPct = Math.round(progress * 100);
 
-  if (status === "loading" || loading) {
+  if (status === "loading" || loading || !sessionReady) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <div className="w-10 h-10 rounded-full border-2 border-spotify-green border-t-transparent animate-spin" />

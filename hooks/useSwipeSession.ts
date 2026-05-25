@@ -33,18 +33,30 @@ export function useSwipeSession({
       processingRef.current = true;
 
       const track = tracks[currentIndex];
-      if (!track) return;
+      if (!track) {
+        processingRef.current = false;
+        return;
+      }
 
       if (direction === "keep") {
         setKept((prev) => [...prev, track]);
       } else {
         setRemoved((prev) => [...prev, track]);
-        // Fire-and-forget remove from Spotify
+        // Remove from Spotify — retry once on failure
+        const removeBody = JSON.stringify({ trackId: track.id });
         fetch(`/api/playlist/${playlistId}/remove`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ trackId: track.id }),
-        }).catch(() => {});
+          body: removeBody,
+        }).catch(() => {
+          setTimeout(() => {
+            fetch(`/api/playlist/${playlistId}/remove`, {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: removeBody,
+            }).catch(() => console.warn("[Swipefy] Failed to remove track from Spotify:", track.id));
+          }, 1500);
+        });
       }
 
       // Save swipe to Supabase (fire-and-forget)

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 
 export function useAudio(src: string | null) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fadeRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [ready, setReady] = useState(false);
@@ -29,6 +30,10 @@ export function useAudio(src: string | null) {
     audio.addEventListener("ended", onEnded);
 
     return () => {
+      if (fadeRef.current) {
+        clearInterval(fadeRef.current);
+        fadeRef.current = null;
+      }
       audio.pause();
       audio.removeEventListener("canplay", onCanPlay);
       audio.removeEventListener("timeupdate", onTimeUpdate);
@@ -41,14 +46,20 @@ export function useAudio(src: string | null) {
   const play = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    if (fadeRef.current) {
+      clearInterval(fadeRef.current);
+      fadeRef.current = null;
+    }
     audio.currentTime = 0;
     audio.play().catch(() => {});
-    // Fade in
     let vol = 0;
-    const fade = setInterval(() => {
+    fadeRef.current = setInterval(() => {
       vol = Math.min(vol + 0.05, 0.7);
       if (audio) audio.volume = vol;
-      if (vol >= 0.7) clearInterval(fade);
+      if (vol >= 0.7) {
+        clearInterval(fadeRef.current!);
+        fadeRef.current = null;
+      }
     }, 50);
     setPlaying(true);
   }, []);
@@ -56,13 +67,17 @@ export function useAudio(src: string | null) {
   const pause = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    // Fade out
+    if (fadeRef.current) {
+      clearInterval(fadeRef.current);
+      fadeRef.current = null;
+    }
     let vol = audio.volume;
-    const fade = setInterval(() => {
+    fadeRef.current = setInterval(() => {
       vol = Math.max(vol - 0.1, 0);
       if (audio) audio.volume = vol;
       if (vol <= 0) {
-        clearInterval(fade);
+        clearInterval(fadeRef.current!);
+        fadeRef.current = null;
         audio.pause();
       }
     }, 30);

@@ -29,11 +29,20 @@ async function spotifyFetch<T>(
 export async function getUserPlaylists(
   accessToken: string
 ): Promise<SpotifyPlaylist[]> {
-  const data = await spotifyFetch<{ items: SpotifyPlaylist[]; next: string | null }>(
-    "/me/playlists?limit=50",
-    accessToken
-  );
-  return data.items.filter(Boolean);
+  const playlists: SpotifyPlaylist[] = [];
+  let url: string | null = "/me/playlists?limit=50";
+
+  while (url) {
+    const data: { items: SpotifyPlaylist[]; next: string | null } =
+      await spotifyFetch<{ items: SpotifyPlaylist[]; next: string | null }>(
+        url,
+        accessToken
+      );
+    playlists.push(...data.items.filter(Boolean));
+    url = data.next;
+  }
+
+  return playlists;
 }
 
 interface RawItem {

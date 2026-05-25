@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
+import { useEffect, useCallback, forwardRef, useImperativeHandle, useRef } from "react";
 import {
   motion,
   useMotionValue,
@@ -33,6 +33,7 @@ const SwipeStack = forwardRef<SwipeStackHandle, SwipeStackProps>(
     const keepOpacity = useTransform(x, [20, 120], [0, 1]);
     const removeOpacity = useTransform(x, [-120, -20], [1, 0]);
     const controls = useAnimation();
+    const firingRef = useRef(false);
 
     const { playing, progress, play, pause } = useAudio(
       currentTrack?.preview_url ?? null
@@ -48,7 +49,8 @@ const SwipeStack = forwardRef<SwipeStackHandle, SwipeStackProps>(
 
     const fireSwipe = useCallback(
       async (direction: SwipeDirection) => {
-        if (disabled) return;
+        if (disabled || firingRef.current) return;
+        firingRef.current = true;
         pause();
         await controls.start({
           x: direction === "keep" ? 700 : -700,
@@ -58,6 +60,7 @@ const SwipeStack = forwardRef<SwipeStackHandle, SwipeStackProps>(
         });
         x.set(0);
         controls.set({ x: 0, rotate: 0, opacity: 1 });
+        firingRef.current = false;
         onSwipe(direction);
       },
       [controls, disabled, onSwipe, pause, x]

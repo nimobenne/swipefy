@@ -13,12 +13,16 @@ create table if not exists swipe_sessions (
 create table if not exists swipes (
   id uuid primary key default gen_random_uuid(),
   session_id uuid references swipe_sessions(id) on delete cascade,
+  playlist_id text,
   track_id text not null,
   track_name text,
   artist_name text,
   direction text not null check (direction in ('keep', 'remove')),
   created_at timestamptz default now()
 );
+
+-- If upgrading an existing database, run:
+-- alter table swipes add column if not exists playlist_id text;
 
 -- Indexes
 create index if not exists swipes_session_id_idx on swipes(session_id);

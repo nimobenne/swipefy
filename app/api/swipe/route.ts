@@ -27,6 +27,7 @@ export async function POST(req: Request) {
     track_name: trackName,
     artist_name: artistName,
     direction,
+    playlist_id: playlistId ?? null,
   });
 
   if (error) {
