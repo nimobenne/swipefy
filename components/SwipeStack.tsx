@@ -2,9 +2,9 @@
 import { useEffect, useCallback, forwardRef, useImperativeHandle, useRef } from "react";
 import {
   motion,
+  animate,
   useMotionValue,
   useTransform,
-  useAnimation,
   PanInfo,
 } from "framer-motion";
 import { SpotifyTrack, SwipeDirection } from "@/types";
@@ -29,10 +29,10 @@ interface SwipeStackProps {
 const SwipeStack = forwardRef<SwipeStackHandle, SwipeStackProps>(
   function SwipeStack({ currentTrack, nextTrack, thirdTrack, onSwipe, disabled }, ref) {
     const x = useMotionValue(0);
+    const opacity = useMotionValue(1);
     const rotate = useTransform(x, [-300, 300], [-20, 20]);
     const keepOpacity = useTransform(x, [20, 120], [0, 1]);
     const removeOpacity = useTransform(x, [-120, -20], [1, 0]);
-    const controls = useAnimation();
     const firingRef = useRef(false);
 
     const { playing, progress, play, pause } = useAudio(
@@ -52,18 +52,21 @@ const SwipeStack = forwardRef<SwipeStackHandle, SwipeStackProps>(
         if (disabled || firingRef.current) return;
         firingRef.current = true;
         pause();
-        await controls.start({
-          x: direction === "keep" ? 700 : -700,
-          rotate: direction === "keep" ? 25 : -25,
-          opacity: 0,
-          transition: { duration: 0.32, ease: "easeIn" },
-        });
+
+        await Promise.all([
+          animate(x, direction === "keep" ? 700 : -700, {
+            duration: 0.32,
+            ease: "easeIn",
+          }),
+          animate(opacity, 0, { duration: 0.32, ease: "easeIn" }),
+        ]);
+
         x.set(0);
-        controls.set({ x: 0, rotate: 0, opacity: 1 });
+        opacity.set(1);
         firingRef.current = false;
         onSwipe(direction);
       },
-      [controls, disabled, onSwipe, pause, x]
+      [disabled, onSwipe, pause, x, opacity]
     );
 
     useImperativeHandle(ref, () => ({ swipe: fireSwipe }), [fireSwipe]);
@@ -77,14 +80,10 @@ const SwipeStack = forwardRef<SwipeStackHandle, SwipeStackProps>(
         if (shouldSwipe) {
           fireSwipe(info.offset.x > 0 ? "keep" : "remove");
         } else {
-          controls.start({
-            x: 0,
-            rotate: 0,
-            transition: { type: "spring", stiffness: 300, damping: 20 },
-          });
+          animate(x, 0, { type: "spring", stiffness: 300, damping: 20 });
         }
       },
-      [controls, fireSwipe]
+      [fireSwipe, x]
     );
 
     useEffect(() => {
@@ -124,13 +123,11 @@ const SwipeStack = forwardRef<SwipeStackHandle, SwipeStackProps>(
         {/* Top draggable card */}
         <motion.div
           className="absolute inset-0 cursor-grab active:cursor-grabbing touch-none"
-          style={{ x, rotate }}
-          initial={{ opacity: 1 }}
+          style={{ x, rotate, opacity }}
           drag={disabled ? false : "x"}
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.85}
           onDragEnd={handleDragEnd}
-          animate={controls}
           whileDrag={{ scale: 1.03 }}
         >
           <SongCard
