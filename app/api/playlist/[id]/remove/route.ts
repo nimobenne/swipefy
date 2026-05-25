@@ -24,6 +24,7 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[remove]", id, trackId, msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
