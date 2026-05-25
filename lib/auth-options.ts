@@ -52,7 +52,7 @@ export const authOptions: AuthOptions = {
         params: {
           scope: SPOTIFY_SCOPES,
           redirect_uri: `${process.env.NEXTAUTH_URL}/api/auth/callback/spotify`,
-          show_dialog: true,
+
         },
       },
     }),
@@ -61,6 +61,7 @@ export const authOptions: AuthOptions = {
     async jwt({ token, account }) {
       if (account) {
         console.log("[auth] granted scope:", account.scope);
+        console.log("[auth] access token prefix:", String(account.access_token).slice(0, 20));
         return {
           ...token,
           accessToken: account.access_token,
