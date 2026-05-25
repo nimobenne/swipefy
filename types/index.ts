@@ -30,7 +30,7 @@ export interface SpotifyPlaylist {
   description: string;
   images: SpotifyImage[];
   tracks: { total: number };
-  owner: { display_name: string };
+  owner: { id: string; display_name: string };
 }
 
 export type SwipeDirection = "keep" | "remove";
