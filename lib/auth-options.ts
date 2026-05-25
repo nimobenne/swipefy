@@ -60,6 +60,7 @@ export const authOptions: AuthOptions = {
   callbacks: {
     async jwt({ token, account }) {
       if (account) {
+        console.log("[auth] granted scope:", account.scope);
         return {
           ...token,
           accessToken: account.access_token,
