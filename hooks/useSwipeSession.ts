@@ -14,15 +14,19 @@ function fireRemoveRequest(playlistId: string, trackId: string) {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body,
-  }).catch(() => {
-    setTimeout(() => {
-      fetch(`/api/playlist/${playlistId}/remove`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body,
-      }).catch(() => console.warn("[Swipefy] Failed to remove track from Spotify:", trackId));
-    }, 1500);
-  });
+  })
+    .then((r) => {
+      if (!r.ok) r.json().then((d) => console.error("[Swipefy] Remove failed:", d.error));
+    })
+    .catch(() => {
+      setTimeout(() => {
+        fetch(`/api/playlist/${playlistId}/remove`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body,
+        }).catch(() => console.warn("[Swipefy] Failed to remove track from Spotify:", trackId));
+      }, 1500);
+    });
 }
 
 export function useSwipeSession({
