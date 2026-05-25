@@ -125,6 +125,7 @@ const SwipeStack = forwardRef<SwipeStackHandle, SwipeStackProps>(
         <motion.div
           className="absolute inset-0 cursor-grab active:cursor-grabbing touch-none"
           style={{ x, rotate }}
+          initial={{ opacity: 1 }}
           drag={disabled ? false : "x"}
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.85}
