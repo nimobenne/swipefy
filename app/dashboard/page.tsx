@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -29,6 +30,12 @@ export default function Dashboard() {
     router.push(`/swipe/${playlist.id}?name=${encodeURIComponent(playlist.name)}`);
   };
 
+  const filtered = search.trim()
+    ? playlists.filter((p) =>
+        p.name.toLowerCase().includes(search.toLowerCase())
+      )
+    : playlists;
+
   if (status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -41,7 +48,7 @@ export default function Dashboard() {
     <main className="min-h-screen px-5 py-8 max-w-2xl mx-auto">
       {/* Header */}
       <motion.div
-        className="flex items-center justify-between mb-8"
+        className="flex items-center justify-between mb-6"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -49,9 +56,7 @@ export default function Dashboard() {
           <h1 className="text-2xl font-black">
             Swipe<span style={{ color: "#1DB954" }}>fy</span>
           </h1>
-          <p className="text-subtext text-sm mt-0.5">
-            Pick a playlist to curate
-          </p>
+          <p className="text-subtext text-sm mt-0.5">Pick a playlist to curate</p>
         </div>
         <button
           onClick={() => signOut({ callbackUrl: "/" })}
@@ -59,6 +64,44 @@ export default function Dashboard() {
         >
           Sign out
         </button>
+      </motion.div>
+
+      {/* Search */}
+      <motion.div
+        className="mb-6"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <div className="relative">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" strokeLinecap="round" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search playlists…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-white/8 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-spotify-green/50 transition-colors"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+              </svg>
+            </button>
+          )}
+        </div>
       </motion.div>
 
       {/* Error */}
@@ -70,18 +113,25 @@ export default function Dashboard() {
 
       {/* Grid */}
       <PlaylistGrid
-        playlists={playlists}
+        playlists={filtered}
         onSelect={handleSelect}
         loading={loading}
       />
 
-      {!loading && playlists.length === 0 && !error && (
+      {!loading && filtered.length === 0 && !error && (
         <div className="text-center py-20 text-subtext">
-          <p className="text-4xl mb-3">🎵</p>
-          <p className="font-semibold">No playlists found</p>
-          <p className="text-sm mt-1 opacity-60">
-            Create a playlist on Spotify first
-          </p>
+          {search ? (
+            <>
+              <p className="text-4xl mb-3">🔍</p>
+              <p className="font-semibold">No playlists match &ldquo;{search}&rdquo;</p>
+            </>
+          ) : (
+            <>
+              <p className="text-4xl mb-3">🎵</p>
+              <p className="font-semibold">No playlists found</p>
+              <p className="text-sm mt-1 opacity-60">Create a playlist on Spotify first</p>
+            </>
+          )}
         </div>
       )}
     </main>

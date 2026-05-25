@@ -1,7 +1,8 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth-options";
-import { getUserPlaylists } from "@/lib/spotify";
+import { getUserPlaylists, getLikedTracksCount } from "@/lib/spotify";
+import { SpotifyPlaylist } from "@/types";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -10,8 +11,21 @@ export async function GET() {
   }
 
   try {
-    const playlists = await getUserPlaylists(session.accessToken);
-    return NextResponse.json({ playlists });
+    const [playlists, likedCount] = await Promise.all([
+      getUserPlaylists(session.accessToken),
+      getLikedTracksCount(session.accessToken).catch(() => 0),
+    ]);
+
+    const likedPlaylist: SpotifyPlaylist = {
+      id: "liked",
+      name: "Liked Songs",
+      description: "Your saved tracks",
+      images: [],
+      tracks: { total: likedCount },
+      owner: { display_name: "You" },
+    };
+
+    return NextResponse.json({ playlists: [likedPlaylist, ...playlists] });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: msg }, { status: 500 });

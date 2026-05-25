@@ -7,6 +7,7 @@ interface PlaylistGridProps {
   playlists: SpotifyPlaylist[];
   onSelect: (playlist: SpotifyPlaylist) => void;
   loading?: boolean;
+  currentUserId?: string;
 }
 
 const container = {
@@ -18,6 +19,19 @@ const item = {
   hidden: { opacity: 0, y: 20, scale: 0.95 },
   show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 300, damping: 22 } },
 };
+
+function LikedSongsArt() {
+  return (
+    <div
+      className="w-full h-full flex items-center justify-center"
+      style={{ background: "linear-gradient(135deg, #450af5, #c4efd9)" }}
+    >
+      <svg viewBox="0 0 24 24" fill="white" className="w-12 h-12 drop-shadow-lg">
+        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+      </svg>
+    </div>
+  );
+}
 
 export default function PlaylistGrid({ playlists, onSelect, loading }: PlaylistGridProps) {
   if (loading) {
@@ -43,6 +57,9 @@ export default function PlaylistGrid({ playlists, onSelect, loading }: PlaylistG
     >
       {playlists.map((playlist) => {
         const img = playlist.images?.[0]?.url;
+        const isLiked = playlist.id === "liked";
+        const trackCount = playlist.tracks?.total ?? 0;
+
         return (
           <motion.button
             key={playlist.id}
@@ -53,7 +70,9 @@ export default function PlaylistGrid({ playlists, onSelect, loading }: PlaylistG
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.97 }}
           >
-            {img ? (
+            {isLiked ? (
+              <LikedSongsArt />
+            ) : img ? (
               <Image
                 src={img}
                 alt={playlist.name}
@@ -69,16 +88,21 @@ export default function PlaylistGrid({ playlists, onSelect, loading }: PlaylistG
             )}
 
             {/* Gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
 
             {/* Info */}
             <div className="absolute bottom-0 left-0 right-0 p-3">
               <p className="text-white font-bold text-sm leading-tight line-clamp-2">
                 {playlist.name}
               </p>
-              <p className="text-white/50 text-xs mt-0.5">
-                {playlist.tracks?.total ?? 0} tracks
+              <p className="text-white/60 text-xs mt-0.5 font-medium">
+                {trackCount > 0 ? `${trackCount.toLocaleString()} tracks` : "Empty"}
               </p>
+              {!isLiked && playlist.owner?.display_name && (
+                <p className="text-white/35 text-[10px] mt-0.5 truncate">
+                  {playlist.owner.display_name}
+                </p>
+              )}
             </div>
 
             {/* Hover glow */}

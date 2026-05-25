@@ -45,6 +45,11 @@ export async function getUserPlaylists(
   return playlists;
 }
 
+export async function getLikedTracksCount(accessToken: string): Promise<number> {
+  const data = await spotifyFetch<{ total: number }>("/me/tracks?limit=1", accessToken);
+  return data.total;
+}
+
 interface RawItem {
   id?: string | null;
   name?: string;
@@ -58,6 +63,7 @@ interface RawItem {
 interface TracksPage {
   items: { item?: RawItem | null; track?: RawItem | null }[];
   next: string | null;
+  total?: number;
 }
 
 export async function getPlaylistTracks(
@@ -65,7 +71,10 @@ export async function getPlaylistTracks(
   playlistId: string
 ): Promise<SpotifyTrack[]> {
   const tracks: SpotifyTrack[] = [];
-  let url: string | null = `/playlists/${playlistId}/items?limit=100`;
+  let url: string | null =
+    playlistId === "liked"
+      ? "/me/tracks?limit=50"
+      : `/playlists/${playlistId}/items?limit=100`;
 
   while (url) {
     const page: TracksPage = await spotifyFetch<TracksPage>(url, accessToken);
@@ -93,10 +102,17 @@ export async function removeTrackFromPlaylist(
   playlistId: string,
   trackId: string
 ): Promise<void> {
-  await spotifyFetch<null>(`/playlists/${playlistId}/tracks`, accessToken, {
-    method: "DELETE",
-    body: JSON.stringify({
-      tracks: [{ uri: `spotify:track:${trackId}` }],
-    }),
-  });
+  if (playlistId === "liked") {
+    await spotifyFetch<null>("/me/tracks", accessToken, {
+      method: "DELETE",
+      body: JSON.stringify({ ids: [trackId] }),
+    });
+  } else {
+    await spotifyFetch<null>(`/playlists/${playlistId}/tracks`, accessToken, {
+      method: "DELETE",
+      body: JSON.stringify({
+        tracks: [{ uri: `spotify:track:${trackId}` }],
+      }),
+    });
+  }
 }
