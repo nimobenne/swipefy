@@ -5,7 +5,6 @@ import { SpotifyTrack, SwipeDirection, StreakState, DopamineEvent } from "@/type
 interface UseSwipeSessionProps {
   tracks: SpotifyTrack[];
   playlistId: string;
-  sessionId: string | null;
   onComplete: (kept: SpotifyTrack[], removed: SpotifyTrack[]) => void;
 }
 
@@ -29,7 +28,6 @@ function fireRemoveRequest(playlistId: string, trackId: string) {
 export function useSwipeSession({
   tracks,
   playlistId,
-  sessionId,
   onComplete,
 }: UseSwipeSessionProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -94,20 +92,6 @@ export function useSwipeSession({
         setPendingRemoval(track);
       }
 
-      // Save swipe to Supabase (fire-and-forget)
-      fetch("/api/swipe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          trackId: track.id,
-          trackName: track.name,
-          artistName: track.artists[0]?.name ?? "",
-          direction,
-          playlistId,
-          sessionId,
-        }),
-      }).catch(() => {});
-
       // Update streak + dopamine
       setStreak((prev) => {
         const sameType = prev.type === direction;
@@ -150,7 +134,7 @@ export function useSwipeSession({
         processingRef.current = false;
       }, 350);
     },
-    [currentIndex, tracks, kept, removed, playlistId, sessionId, onComplete, triggerDopamine]
+    [currentIndex, tracks, kept, removed, playlistId, onComplete, triggerDopamine]
   );
 
   const undoRemove = useCallback(() => {

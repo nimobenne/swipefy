@@ -24,25 +24,8 @@ export default function SwipePage({ params }: PageProps) {
 
   const [tracks, setTracks] = useState<SpotifyTrack[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sessionReady, setSessionReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
   const stackRef = useRef<SwipeStackHandle>(null);
-
-  // Create Supabase session — must resolve before swipes start so session_id is never null
-  useEffect(() => {
-    fetch("/api/swipe", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playlistId, playlistName }),
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.sessionId) setSessionId(d.sessionId);
-      })
-      .catch(() => {})
-      .finally(() => setSessionReady(true));
-  }, [playlistId, playlistName]);
 
   // Load tracks
   useEffect(() => {
@@ -80,7 +63,6 @@ export default function SwipePage({ params }: PageProps) {
   } = useSwipeSession({
     tracks,
     playlistId,
-    sessionId,
     onComplete: handleComplete,
   });
 
