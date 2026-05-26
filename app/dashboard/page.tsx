@@ -1,17 +1,12 @@
 // app/dashboard/page.tsx
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { createClient } from "@supabase/supabase-js";
 import TrackBreakdown from "@/components/TrackBreakdown";
 import { SpotifyTrack } from "@/types";
-
-const supabaseClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 interface SubmittedPlaylist {
   id: string;
@@ -30,6 +25,13 @@ interface Score {
 export default function DashboardPage() {
   const { data: session, status } = useSession({ required: true });
   const router = useRouter();
+  const supabaseClient = useMemo(
+    () => createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder"
+    ),
+    []
+  );
   const [playlist, setPlaylist] = useState<SubmittedPlaylist | null>(null);
   const [score, setScore] = useState<Score | null>(null);
   const [breakdown, setBreakdown] = useState<Record<string, { yes: number; no: number; pct: number }>>({});
