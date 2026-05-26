@@ -38,6 +38,7 @@ export default function DashboardPage() {
 
   const fetchScore = useCallback(async (playlistId: string) => {
     const res = await fetch(`/api/scores/${playlistId}`);
+    if (!res.ok) return;
     const data = await res.json();
     setScore(data.score);
     setBreakdown(data.trackBreakdown ?? {});
@@ -53,16 +54,19 @@ export default function DashboardPage() {
       .eq("owner_id", session.userId)
       .eq("is_active", true)
       .single()
-      .then(({ data }) => {
-        if (!data) { setLoading(false); return; }
-        setPlaylist(data as SubmittedPlaylist);
-        fetchScore(data.id);
-        // Load tracks from Spotify
-        fetch(`/api/playlist/${data.spotify_playlist_id}`)
-          .then((r) => r.json())
-          .then((d) => setTracks(d.tracks ?? []))
-          .finally(() => setLoading(false));
-      });
+      .then(
+        ({ data }) => {
+          if (!data) { setLoading(false); return; }
+          setPlaylist(data as SubmittedPlaylist);
+          fetchScore(data.id);
+          // Load tracks from Spotify
+          fetch(`/api/playlist/${data.spotify_playlist_id}`)
+            .then((r) => r.json())
+            .then((d) => setTracks(d.tracks ?? []))
+            .finally(() => setLoading(false));
+        },
+        () => setLoading(false)
+      );
   }, [status, session?.userId, fetchScore]);
 
   // Realtime subscription — refresh score on every new vote
@@ -76,7 +80,7 @@ export default function DashboardPage() {
         () => fetchScore(playlist.id)
       )
       .subscribe();
-    return () => { supabaseClient.removeChannel(channel); };
+    return () => { channel.unsubscribe(); };
   }, [playlist?.id, fetchScore]);
 
   if (status === "loading" || loading) {
