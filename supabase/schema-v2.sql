@@ -27,6 +27,11 @@ CREATE INDEX IF NOT EXISTS idx_track_votes_playlist ON track_votes(playlist_id);
 CREATE INDEX IF NOT EXISTS idx_public_playlists_owner ON public_playlists(owner_id);
 CREATE INDEX IF NOT EXISTS idx_public_playlists_active ON public_playlists(is_active, submitted_at);
 
+-- Partial unique constraint: one active playlist per owner
+CREATE UNIQUE INDEX IF NOT EXISTS unique_active_per_owner
+  ON public_playlists (owner_id)
+  WHERE is_active = true;
+
 CREATE OR REPLACE VIEW playlist_scores AS
 SELECT
   playlist_id,
@@ -35,3 +40,14 @@ SELECT
   COUNT(DISTINCT voter_fingerprint)               AS unique_voters
 FROM track_votes
 GROUP BY playlist_id;
+
+-- Row-Level Security
+-- public_playlists: anyone can read, service role handles writes (API routes use service role key)
+ALTER TABLE public_playlists ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "public_playlists_select" ON public_playlists
+  FOR SELECT USING (true);
+
+-- track_votes: anyone can read (for realtime dashboard), service role handles writes
+ALTER TABLE track_votes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "track_votes_select" ON track_votes
+  FOR SELECT USING (true);
