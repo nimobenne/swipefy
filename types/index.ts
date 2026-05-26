@@ -55,3 +55,8 @@ export type DopamineEvent =
   | "keep"
   | "remove"
   | null;
+
+export interface TrackVoteResult {
+  trackId: string;
+  vote: boolean;
+}
