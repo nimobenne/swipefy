@@ -8,6 +8,7 @@ import ActionButtons from "@/components/ActionButtons";
 import StreakCounter from "@/components/StreakCounter";
 import DopamineOverlay from "@/components/DopamineOverlay";
 import { useSwipeSession } from "@/hooks/useSwipeSession";
+import { useItunesPreviews } from "@/hooks/useItunesPreviews";
 import { SpotifyTrack } from "@/types";
 
 interface PageProps {
@@ -41,6 +42,18 @@ export default function SwipePage({ params }: PageProps) {
   }, [status, playlistId]);
 
   const handleComplete = (kept: SpotifyTrack[], removed: SpotifyTrack[]) => {
+    // Store removed tracks + token so results page can apply to Spotify client-side
+    if (removed.length > 0 && session?.accessToken) {
+      sessionStorage.setItem(
+        `swipefy_removals_${playlistId}`,
+        JSON.stringify({
+          playlistId,
+          trackIds: removed.map((t) => t.id),
+          trackNames: removed.map((t) => `${t.name} — ${t.artists[0]?.name ?? ""}`),
+          accessToken: session.accessToken,
+        })
+      );
+    }
     router.push(
       `/results/${playlistId}?kept=${kept.length}&removed=${removed.length}&name=${encodeURIComponent(playlistName)}`
     );
@@ -66,6 +79,7 @@ export default function SwipePage({ params }: PageProps) {
     onComplete: handleComplete,
   });
 
+  const itunesPreviews = useItunesPreviews(tracks, currentIndex);
   const progressPct = Math.round(progress * 100);
 
   if (status === "loading" || loading) {
@@ -83,7 +97,7 @@ export default function SwipePage({ params }: PageProps) {
         <p className="text-remove text-lg font-bold">Something went wrong</p>
         <p className="text-subtext text-sm text-center">{error}</p>
         <button
-          onClick={() => router.push("/dashboard")}
+          onClick={() => router.push("/library")}
           className="mt-4 px-6 py-3 rounded-2xl bg-white/10 text-white text-sm font-semibold"
         >
           Back to playlists
@@ -101,7 +115,7 @@ export default function SwipePage({ params }: PageProps) {
         animate={{ opacity: 1, y: 0 }}
       >
         <button
-          onClick={() => router.push("/dashboard")}
+          onClick={() => router.push("/library")}
           className="text-subtext hover:text-white transition-colors p-1"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
@@ -150,6 +164,11 @@ export default function SwipePage({ params }: PageProps) {
               nextTrack={nextTrack}
               thirdTrack={thirdTrack}
               onSwipe={swipe}
+              previewUrl={
+                currentTrack
+                  ? (itunesPreviews[currentTrack.id] ?? currentTrack.preview_url ?? null)
+                  : null
+              }
             />
           ) : tracks.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6">
@@ -159,7 +178,7 @@ export default function SwipePage({ params }: PageProps) {
                 This playlist has no tracks with previews, or contains only podcasts.
               </p>
               <button
-                onClick={() => router.push("/dashboard")}
+                onClick={() => router.push("/library")}
                 className="mt-2 px-5 py-2.5 rounded-xl bg-white/10 text-white text-sm font-semibold"
               >
                 Pick another playlist
