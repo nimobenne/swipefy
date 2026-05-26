@@ -21,6 +21,7 @@ export function usePublicFeed() {
           setCurrent(null);
         } else {
           setCurrent(data.playlist);
+          setSeenIds((prev) => [...prev, data.playlist.id]);
           setExhausted(false);
         }
       } catch {

@@ -23,12 +23,12 @@ export default function DiscoverPage() {
   const [crowdPct, setCrowdPct] = useState<number | null>(null);
   const [voteResults, setVoteResults] = useState<TrackVoteResult[]>([]);
   const stackRef = useRef<SwipeStackHandle>(null);
+  const crowdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch first playlist on mount
   useEffect(() => {
     if (status === "authenticated") fetchNext();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  }, [status, fetchNext]);
 
   // Load tracks when playlist changes
   useEffect(() => {
@@ -43,13 +43,15 @@ export default function DiscoverPage() {
       .finally(() => setTracksLoading(false));
   }, [playlist?.id, session?.accessToken]);
 
-  const handleComplete = async (results: TrackVoteResult[]) => {
+  const handleComplete = (results: TrackVoteResult[]) => {
     setVoteResults(results);
     setShowReveal(true);
-    setTimeout(async () => {
+    if (crowdTimerRef.current) clearTimeout(crowdTimerRef.current);
+    crowdTimerRef.current = setTimeout(async () => {
       if (!playlist) return;
       try {
         const res = await fetch(`/api/scores/${playlist.id}`);
+        if (!res.ok) throw new Error("Score fetch failed");
         const data = await res.json();
         setCrowdPct(data.score?.approval_pct ?? null);
       } catch {
@@ -185,7 +187,7 @@ export default function DiscoverPage() {
           disabled={!currentTrack || tracksLoading}
         />
         <button
-          onClick={() => fetchNext(playlist?.id)}
+          onClick={() => playlist && handleNext()}
           className="w-full text-center text-subtext text-xs mt-3 hover:text-white transition-colors"
         >
           Skip playlist →
