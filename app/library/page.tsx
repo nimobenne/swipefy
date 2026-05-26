@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import PlaylistGrid from "@/components/PlaylistGrid";
 import { SpotifyPlaylist } from "@/types";
 
-export default function Dashboard() {
+export default function Library() {
   const { data: session, status } = useSession({ required: true });
   const router = useRouter();
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);

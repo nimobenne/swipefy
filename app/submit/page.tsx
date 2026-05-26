@@ -38,7 +38,7 @@ export default function SubmitPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
       router.push("/dashboard");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Submission failed");
@@ -79,6 +79,13 @@ export default function SubmitPage() {
       {error && (
         <div className="mb-4 px-4 py-3 rounded-xl bg-remove/10 border border-remove/30 text-remove text-sm">
           {error}
+        </div>
+      )}
+
+      {!loading && playlists.length === 0 && (
+        <div className="text-center py-16 text-subtext">
+          <p className="text-lg font-semibold text-white mb-2">No playlists found</p>
+          <p className="text-sm">Make sure you have playlists in your Spotify account.</p>
         </div>
       )}
 
