@@ -1,42 +1,85 @@
+// app/dashboard/page.tsx
 "use client";
-import { useEffect, useState } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useEffect, useState, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import PlaylistGrid from "@/components/PlaylistGrid";
-import { SpotifyPlaylist } from "@/types";
+import { createClient } from "@supabase/supabase-js";
+import TrackBreakdown from "@/components/TrackBreakdown";
+import { SpotifyTrack } from "@/types";
 
-export default function Dashboard() {
+const supabaseClient = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+interface SubmittedPlaylist {
+  id: string;
+  spotify_playlist_id: string;
+  name: string;
+  cover_url: string | null;
+  track_count: number;
+}
+
+interface Score {
+  approval_pct: number;
+  total_votes: number;
+  unique_voters: number;
+}
+
+export default function DashboardPage() {
   const { data: session, status } = useSession({ required: true });
   const router = useRouter();
-  const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);
+  const [playlist, setPlaylist] = useState<SubmittedPlaylist | null>(null);
+  const [score, setScore] = useState<Score | null>(null);
+  const [breakdown, setBreakdown] = useState<Record<string, { yes: number; no: number; pct: number }>>({});
+  const [tracks, setTracks] = useState<SpotifyTrack[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
+
+  const fetchScore = useCallback(async (playlistId: string) => {
+    const res = await fetch(`/api/scores/${playlistId}`);
+    const data = await res.json();
+    setScore(data.score);
+    setBreakdown(data.trackBreakdown ?? {});
+  }, []);
 
   useEffect(() => {
-    if (status !== "authenticated") return;
-    fetch("/api/playlists")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.error) throw new Error(data.error);
-        setPlaylists(data.playlists);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [status]);
+    if (status !== "authenticated" || !session?.userId) return;
 
-  const handleSelect = (playlist: SpotifyPlaylist) => {
-    router.push(`/swipe/${playlist.id}?name=${encodeURIComponent(playlist.name)}`);
-  };
+    // Fetch user's submitted playlist
+    supabaseClient
+      .from("public_playlists")
+      .select("id, spotify_playlist_id, name, cover_url, track_count")
+      .eq("owner_id", session.userId)
+      .eq("is_active", true)
+      .single()
+      .then(({ data }) => {
+        if (!data) { setLoading(false); return; }
+        setPlaylist(data as SubmittedPlaylist);
+        fetchScore(data.id);
+        // Load tracks from Spotify
+        fetch(`/api/playlist/${data.spotify_playlist_id}`)
+          .then((r) => r.json())
+          .then((d) => setTracks(d.tracks ?? []))
+          .finally(() => setLoading(false));
+      });
+  }, [status, session?.userId, fetchScore]);
 
-  const filtered = search.trim()
-    ? playlists.filter((p) =>
-        p.name.toLowerCase().includes(search.toLowerCase())
+  // Realtime subscription — refresh score on every new vote
+  useEffect(() => {
+    if (!playlist) return;
+    const channel = supabaseClient
+      .channel(`votes:${playlist.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "track_votes", filter: `playlist_id=eq.${playlist.id}` },
+        () => fetchScore(playlist.id)
       )
-    : playlists;
+      .subscribe();
+    return () => { supabaseClient.removeChannel(channel); };
+  }, [playlist?.id, fetchScore]);
 
-  if (status === "loading") {
+  if (status === "loading" || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 rounded-full border-2 border-spotify-green border-t-transparent animate-spin" />
@@ -44,96 +87,99 @@ export default function Dashboard() {
     );
   }
 
+  if (!playlist) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <p className="text-4xl">🎵</p>
+        <p className="text-white font-bold text-lg">No playlist submitted yet</p>
+        <p className="text-subtext text-sm">Submit one to get your approval score.</p>
+        <button
+          onClick={() => router.push("/submit")}
+          className="mt-4 px-6 py-3 rounded-2xl bg-spotify-green text-black font-black text-sm"
+        >
+          Submit a playlist
+        </button>
+      </div>
+    );
+  }
+
   return (
     <main className="min-h-screen px-5 py-8 max-w-2xl mx-auto">
-      {/* Header */}
       <motion.div
-        className="flex items-center justify-between mb-6"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-      >
-        <div>
-          <h1 className="text-2xl font-black">
-            Swipe<span style={{ color: "#1DB954" }}>fy</span>
-          </h1>
-          <p className="text-subtext text-sm mt-0.5">Pick a playlist to curate</p>
-        </div>
-        <button
-          onClick={() => signOut({ callbackUrl: "/" })}
-          className="text-subtext text-sm hover:text-white transition-colors"
-        >
-          Sign out
-        </button>
-      </motion.div>
-
-      {/* Search */}
-      <motion.div
         className="mb-6"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
       >
-        <div className="relative">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" strokeLinecap="round" />
+        <button
+          onClick={() => router.push("/discover")}
+          className="text-subtext hover:text-white transition-colors mb-4 flex items-center gap-1 text-sm"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+            <path d="M19 12H5M12 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <input
-            type="text"
-            placeholder="Search playlists…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white/8 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-spotify-green/50 transition-colors"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
-            >
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-              </svg>
-            </button>
+          Back to discover
+        </button>
+
+        <div className="flex items-center gap-4 mb-6">
+          {playlist.cover_url && (
+            <img src={playlist.cover_url} alt={playlist.name} className="w-16 h-16 rounded-xl object-cover" />
           )}
+          <div>
+            <h1 className="text-white text-xl font-black">{playlist.name}</h1>
+            <p className="text-subtext text-sm">{playlist.track_count} tracks</p>
+          </div>
         </div>
+
+        {score && (
+          <div className="grid grid-cols-3 gap-3 mb-8">
+            <div className="bg-white/5 rounded-2xl p-4 text-center">
+              <div
+                className="text-3xl font-black mb-1"
+                style={{ color: score.approval_pct >= 70 ? "#1DB954" : score.approval_pct >= 40 ? "#FF9800" : "#E91E8C" }}
+              >
+                {score.approval_pct}%
+              </div>
+              <div className="text-subtext text-xs uppercase tracking-wider">Approval</div>
+            </div>
+            <div className="bg-white/5 rounded-2xl p-4 text-center">
+              <div className="text-3xl font-black text-white mb-1">{score.total_votes}</div>
+              <div className="text-subtext text-xs uppercase tracking-wider">Votes</div>
+            </div>
+            <div className="bg-white/5 rounded-2xl p-4 text-center">
+              <div className="text-3xl font-black text-white mb-1">{score.unique_voters}</div>
+              <div className="text-subtext text-xs uppercase tracking-wider">Listeners</div>
+            </div>
+          </div>
+        )}
+
+        {!score && (
+          <div className="bg-white/5 rounded-2xl p-6 text-center mb-8">
+            <p className="text-subtext text-sm">No votes yet. Share your playlist to get the ball rolling.</p>
+          </div>
+        )}
       </motion.div>
 
-      {/* Error */}
-      {error && (
-        <div className="mb-6 p-4 rounded-2xl bg-remove/10 border border-remove/20 text-remove text-sm">
-          {error}
-        </div>
+      {tracks.length > 0 && Object.keys(breakdown).length > 0 && (
+        <>
+          <h2 className="text-white font-bold mb-3">Track breakdown</h2>
+          <TrackBreakdown tracks={tracks} breakdown={breakdown} />
+        </>
       )}
 
-      {/* Grid */}
-      <PlaylistGrid
-        playlists={filtered}
-        onSelect={handleSelect}
-        loading={loading}
-      />
-
-      {!loading && filtered.length === 0 && !error && (
-        <div className="text-center py-20 text-subtext">
-          {search ? (
-            <>
-              <p className="text-4xl mb-3">🔍</p>
-              <p className="font-semibold">No playlists match &ldquo;{search}&rdquo;</p>
-            </>
-          ) : (
-            <>
-              <p className="text-4xl mb-3">🎵</p>
-              <p className="font-semibold">No playlists found</p>
-              <p className="text-sm mt-1 opacity-60">Create a playlist on Spotify first</p>
-            </>
-          )}
-        </div>
-      )}
+      <div className="mt-8 flex gap-3">
+        <button
+          onClick={() => router.push("/submit")}
+          className="flex-1 py-3 rounded-2xl bg-white/10 text-white font-semibold text-sm hover:bg-white/15 transition-colors"
+        >
+          Swap playlist
+        </button>
+        <button
+          onClick={() => router.push("/discover")}
+          className="flex-1 py-3 rounded-2xl bg-spotify-green text-black font-black text-sm hover:bg-green-400 transition-colors"
+        >
+          Rate others
+        </button>
+      </div>
     </main>
   );
 }
