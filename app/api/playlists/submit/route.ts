@@ -23,11 +23,15 @@ export async function POST(req: NextRequest) {
   }
 
   // Deactivate any existing submission from this user
-  await supabase
+  const { error: deactivateError } = await supabase
     .from("public_playlists")
     .update({ is_active: false })
     .eq("owner_id", session.userId)
     .eq("is_active", true);
+
+  if (deactivateError) {
+    return NextResponse.json({ error: deactivateError.message }, { status: 500 });
+  }
 
   // Upsert new submission
   const { data, error } = await supabase
