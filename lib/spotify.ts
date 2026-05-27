@@ -1,4 +1,28 @@
-import { SpotifyTrack, SpotifyPlaylist, SpotifyArtist, SpotifyAlbum } from "@/types";
+import { SpotifyTrack, SpotifyArtist, SpotifyAlbum } from "@/types";
+
+const tokenCache = { token: "", expiresAt: 0 };
+
+export async function getClientCredentialsToken(): Promise<string> {
+  if (tokenCache.token && Date.now() < tokenCache.expiresAt) {
+    return tokenCache.token;
+  }
+  const creds = Buffer.from(
+    `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`
+  ).toString("base64");
+  const res = await fetch("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${creds}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: "grant_type=client_credentials",
+  });
+  if (!res.ok) throw new Error(`Spotify token error: ${res.status}`);
+  const data = await res.json();
+  tokenCache.token = data.access_token;
+  tokenCache.expiresAt = Date.now() + (data.expires_in - 60) * 1000;
+  return tokenCache.token;
+}
 
 async function spotifyFetch<T>(
   endpoint: string,
@@ -26,28 +50,32 @@ async function spotifyFetch<T>(
   return res.json();
 }
 
-export async function getUserPlaylists(
-  accessToken: string
-): Promise<SpotifyPlaylist[]> {
-  const playlists: SpotifyPlaylist[] = [];
-  let url: string | null = "/me/playlists?limit=50";
-
-  while (url) {
-    const data: { items: SpotifyPlaylist[]; next: string | null } =
-      await spotifyFetch<{ items: SpotifyPlaylist[]; next: string | null }>(
-        url,
-        accessToken
-      );
-    playlists.push(...data.items.filter(Boolean));
-    url = data.next;
-  }
-
-  return playlists;
+export interface PlaylistMetadata {
+  name: string;
+  coverUrl: string | null;
+  trackCount: number;
+  ownerDisplayName: string;
 }
 
-export async function getLikedTracksCount(accessToken: string): Promise<number> {
-  const data = await spotifyFetch<{ total: number }>("/me/tracks?limit=1", accessToken);
-  return data.total;
+export async function getPlaylistMetadata(
+  playlistId: string
+): Promise<PlaylistMetadata> {
+  const token = await getClientCredentialsToken();
+  const data = await spotifyFetch<{
+    name: string;
+    images?: { url: string }[];
+    tracks?: { total: number };
+    owner?: { display_name: string };
+  }>(
+    `/playlists/${playlistId}?fields=name,images,tracks.total,owner.display_name`,
+    token
+  );
+  return {
+    name: data.name,
+    coverUrl: data.images?.[0]?.url ?? null,
+    trackCount: data.tracks?.total ?? 0,
+    ownerDisplayName: data.owner?.display_name ?? "Unknown",
+  };
 }
 
 interface RawItem {
@@ -67,20 +95,24 @@ interface TracksPage {
 }
 
 export async function getPlaylistTracks(
-  accessToken: string,
   playlistId: string
 ): Promise<SpotifyTrack[]> {
+  return getPlaylistTracksWithToken(playlistId, await getClientCredentialsToken());
+}
+
+export async function getPlaylistTracksWithToken(
+  playlistId: string,
+  accessToken: string
+): Promise<SpotifyTrack[]> {
   const tracks: SpotifyTrack[] = [];
-  let url: string | null =
-    playlistId === "liked"
-      ? "/me/tracks?limit=50"
-      : `/playlists/${playlistId}/items?limit=100`;
+  let url: string | null = `/playlists/${playlistId}/tracks?limit=100`;
 
   while (url) {
     const page: TracksPage = await spotifyFetch<TracksPage>(url, accessToken);
+    console.log("[spotify] page items:", page.items?.length, "next:", !!page.next, "first raw:", JSON.stringify(page.items?.[0]).slice(0, 200));
     for (const raw of page.items) {
       const t = raw.item ?? raw.track;
-      if (t?.id && t.name && t.artists && t.album && t.type === "track") {
+      if (t?.id && t.name && t.artists && t.album) {
         tracks.push({
           id: t.id,
           name: t.name,
@@ -94,25 +126,27 @@ export async function getPlaylistTracks(
     url = page.next;
   }
 
+  console.log("[spotify] total tracks parsed:", tracks.length);
   return tracks;
 }
 
-export async function removeTrackFromPlaylist(
-  accessToken: string,
+export async function getPlaylistMetadataWithToken(
   playlistId: string,
-  trackId: string
-): Promise<void> {
-  if (playlistId === "liked") {
-    await spotifyFetch<null>("/me/tracks", accessToken, {
-      method: "DELETE",
-      body: JSON.stringify({ ids: [trackId] }),
-    });
-  } else {
-    await spotifyFetch<null>(`/playlists/${playlistId}/tracks`, accessToken, {
-      method: "DELETE",
-      body: JSON.stringify({
-        tracks: [{ uri: `spotify:track:${trackId}` }],
-      }),
-    });
-  }
+  accessToken: string
+): Promise<PlaylistMetadata> {
+  const data = await spotifyFetch<{
+    name: string;
+    images?: { url: string }[];
+    tracks?: { total: number };
+    owner?: { display_name: string };
+  }>(
+    `/playlists/${playlistId}?fields=name,images,tracks.total,owner.display_name`,
+    accessToken
+  );
+  return {
+    name: data.name,
+    coverUrl: data.images?.[0]?.url ?? null,
+    trackCount: data.tracks?.total ?? 0,
+    ownerDisplayName: data.owner?.display_name ?? "Unknown",
+  };
 }
