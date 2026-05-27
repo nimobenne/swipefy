@@ -34,7 +34,11 @@ export async function GET(req: NextRequest) {
     .eq("week_of", weekOf)
     .eq("is_active", true);
 
-  if (playlistError || !weekPlaylists?.length) {
+  if (playlistError) {
+    console.error("[daily] playlist fetch failed", playlistError.message);
+    return NextResponse.json({ done: true, noContent: true });
+  }
+  if (!weekPlaylists?.length) {
     return NextResponse.json({ done: true, noContent: true });
   }
 
@@ -66,11 +70,13 @@ export async function GET(req: NextRequest) {
   if (!sample) {
     const tracks = (next.tracks_json ?? []) as SpotifyTrack[];
     const sampled = sampleTracks(tracks, 15);
-    await supabase.from("weekly_samples").insert({
-      playlist_id: next.id,
-      week_of: weekOf,
-      sampled_tracks: sampled,
-    });
+    const { error: sampleError } = await supabase.from("weekly_samples").upsert(
+      { playlist_id: next.id, week_of: weekOf, sampled_tracks: sampled },
+      { onConflict: "playlist_id,week_of" }
+    );
+    if (sampleError) {
+      console.error("[daily] weekly_samples upsert failed", sampleError.message);
+    }
     sample = { sampled_tracks: sampled };
   }
 
