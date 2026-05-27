@@ -7,7 +7,7 @@ import { currentWeekStart } from "@/lib/weekly";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  console.log("[admin] userId:", session?.userId, "adminId:", process.env.ADMIN_USER_ID);
+  console.log("[admin] userId:", JSON.stringify(session?.userId), "adminId:", JSON.stringify(process.env.ADMIN_USER_ID), "match:", session?.userId?.trim() === process.env.ADMIN_USER_ID?.trim());
   if (!session?.userId || !isAdmin(session.userId)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
