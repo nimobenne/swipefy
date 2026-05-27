@@ -5,9 +5,11 @@ import { currentWeekStart } from "@/lib/weekly";
 import crypto from "crypto";
 
 function extractPlaylistId(input: string): string | null {
-  const match = input.match(/playlist\/([A-Za-z0-9]+)/);
-  if (match) return match[1];
-  if (/^[A-Za-z0-9]{10,30}$/.test(input.trim())) return input.trim();
+  // https://open.spotify.com/playlist/ID or /playlist/ID?si=...
+  const urlMatch = input.match(/playlist[/:]([A-Za-z0-9]+)/);
+  if (urlMatch) return urlMatch[1];
+  // Raw ID
+  if (/^[A-Za-z0-9]{10,40}$/.test(input.trim())) return input.trim();
   return null;
 }
 
