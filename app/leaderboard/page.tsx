@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import UserMenu from "@/components/UserMenu";
+import BottomNav from "@/components/BottomNav";
 import type { LeaderboardEntry } from "@/app/api/leaderboard/route";
 
 export default function LeaderboardPage() {
@@ -36,7 +37,7 @@ export default function LeaderboardPage() {
   const unrankedEntries = entries.filter((e) => !e.ranked);
 
   return (
-    <main className="min-h-screen px-5 py-8 max-w-2xl mx-auto">
+    <main className="min-h-screen px-5 py-8 pb-24 max-w-2xl mx-auto">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex items-center justify-between mb-6">
           <button
@@ -85,6 +86,7 @@ export default function LeaderboardPage() {
           </>
         )}
       </motion.div>
+      <BottomNav />
     </main>
   );
 }

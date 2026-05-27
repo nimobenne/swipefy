@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import SwipeStack, { SwipeStackHandle } from "@/components/SwipeStack";
 import ActionButtons from "@/components/ActionButtons";
 import UserMenu from "@/components/UserMenu";
+import BottomNav from "@/components/BottomNav";
 import StreakCounter from "@/components/StreakCounter";
 import DopamineOverlay from "@/components/DopamineOverlay";
 import ScoreReveal from "@/components/ScoreReveal";
@@ -149,7 +150,7 @@ export default function DiscoverPage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col max-w-md mx-auto px-4 py-6 relative">
+    <main className="min-h-screen flex flex-col max-w-md mx-auto px-4 py-6 pb-24 relative">
       <motion.div
         className="flex items-center justify-between mb-4"
         initial={{ opacity: 0, y: -10 }}
@@ -206,6 +207,7 @@ export default function DiscoverPage() {
           disabled={!currentTrack || loading}
         />
       </div>
+      <BottomNav />
     </main>
   );
 }

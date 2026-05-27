@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import UserMenu from "@/components/UserMenu";
+import BottomNav from "@/components/BottomNav";
 
 interface Nomination {
   id: string;
@@ -77,7 +78,7 @@ export default function NominationsPage() {
   }
 
   return (
-    <main className="min-h-screen px-5 py-8 max-w-2xl mx-auto">
+    <main className="min-h-screen px-5 py-8 pb-24 max-w-2xl mx-auto">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex items-center justify-between mb-6">
           <button
@@ -164,6 +165,7 @@ export default function NominationsPage() {
           })}
         </div>
       </motion.div>
+      <BottomNav />
     </main>
   );
 }
