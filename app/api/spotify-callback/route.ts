@@ -68,8 +68,9 @@ export async function GET(req: NextRequest) {
     tracks = await getPlaylistTracksWithToken(playlistId, token);
     console.log("[spotify-callback] tracks ok:", tracks.length);
   } catch (e) {
-    console.error("[spotify-callback] tracks failed:", e instanceof Error ? e.message : String(e));
-    return NextResponse.redirect(`${base}/submit?error=tracks_failed`);
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[spotify-callback] tracks failed:", msg);
+    return NextResponse.redirect(`${base}/submit?error=${encodeURIComponent(msg)}`);
   }
 
   await supabase.from("public_playlists").update({ is_active: false }).eq("owner_id", userId).eq("is_active", true);
