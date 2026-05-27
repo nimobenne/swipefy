@@ -127,6 +127,12 @@ export default function DiscoverPage() {
         >
           Submit your playlist
         </button>
+        <button
+          onClick={() => router.push("/nominations")}
+          className="text-subtext text-xs hover:text-white transition-colors"
+        >
+          Vote on nominations for next week →
+        </button>
       </div>
     );
   }
