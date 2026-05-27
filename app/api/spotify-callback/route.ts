@@ -58,13 +58,18 @@ export async function GET(req: NextRequest) {
 
   let metadata, tracks;
   try {
-    [metadata, tracks] = await Promise.all([
-      getPlaylistMetadataWithToken(playlistId, token),
-      getPlaylistTracksWithToken(playlistId, token),
-    ]);
+    metadata = await getPlaylistMetadataWithToken(playlistId, token);
+    console.log("[spotify-callback] metadata ok:", metadata.name);
   } catch (e) {
-    console.error("[spotify-callback] fetch failed", e instanceof Error ? e.message : e);
-    return NextResponse.redirect(`${base}/submit?error=fetch_failed`);
+    console.error("[spotify-callback] metadata failed:", e instanceof Error ? e.message : String(e));
+    return NextResponse.redirect(`${base}/submit?error=metadata_failed`);
+  }
+  try {
+    tracks = await getPlaylistTracksWithToken(playlistId, token);
+    console.log("[spotify-callback] tracks ok:", tracks.length);
+  } catch (e) {
+    console.error("[spotify-callback] tracks failed:", e instanceof Error ? e.message : String(e));
+    return NextResponse.redirect(`${base}/submit?error=tracks_failed`);
   }
 
   await supabase.from("public_playlists").update({ is_active: false }).eq("owner_id", userId).eq("is_active", true);
