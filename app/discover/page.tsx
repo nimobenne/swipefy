@@ -5,67 +5,81 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import SwipeStack, { SwipeStackHandle } from "@/components/SwipeStack";
 import ActionButtons from "@/components/ActionButtons";
+import UserMenu from "@/components/UserMenu";
 import StreakCounter from "@/components/StreakCounter";
 import DopamineOverlay from "@/components/DopamineOverlay";
 import ScoreReveal from "@/components/ScoreReveal";
 import { useVoteSession } from "@/hooks/useVoteSession";
-import { usePublicFeed } from "@/hooks/usePublicFeed";
 import { useItunesPreviews } from "@/hooks/useItunesPreviews";
 import type { SpotifyTrack, TrackVoteResult } from "@/types";
+import type { PublicPlaylist } from "@/lib/supabase";
+
+interface DailyResponse {
+  done?: boolean;
+  comeBackTomorrow?: boolean;
+  weekComplete?: boolean;
+  noContent?: boolean;
+  playlist?: PublicPlaylist;
+  tracks?: SpotifyTrack[];
+  weekOf?: string;
+  totalThisWeek?: number;
+  doneThisWeek?: number;
+}
 
 export default function DiscoverPage() {
   const { data: session, status } = useSession({ required: true });
   const router = useRouter();
-  const { current: playlist, loading: feedLoading, exhausted, fetchNext } = usePublicFeed();
-  const [tracks, setTracks] = useState<SpotifyTrack[]>([]);
-  const [tracksLoading, setTracksLoading] = useState(false);
+  const [dailyData, setDailyData] = useState<DailyResponse | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showReveal, setShowReveal] = useState(false);
   const [crowdPct, setCrowdPct] = useState<number | null>(null);
   const [voteResults, setVoteResults] = useState<TrackVoteResult[]>([]);
   const stackRef = useRef<SwipeStackHandle>(null);
   const crowdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Fetch first playlist on mount
-  useEffect(() => {
-    if (status === "authenticated") fetchNext();
-  }, [status, fetchNext]);
-
-  // Load tracks when playlist changes
-  useEffect(() => {
-    if (!playlist || !session?.accessToken) return;
-    setTracksLoading(true);
+  const fetchDaily = async () => {
+    setLoading(true);
     setShowReveal(false);
     setVoteResults([]);
     setCrowdPct(null);
-    fetch(`/api/playlist/${playlist.spotify_playlist_id}`)
-      .then((r) => r.json())
-      .then((d) => setTracks(d.tracks ?? []))
-      .finally(() => setTracksLoading(false));
-  }, [playlist?.id, session?.accessToken]);
+    try {
+      const res = await fetch("/api/daily");
+      const data: DailyResponse = await res.json();
+      setDailyData(data);
+    } catch {
+      setDailyData({ done: true, noContent: true });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleComplete = (results: TrackVoteResult[]) => {
+  useEffect(() => {
+    if (status === "authenticated") fetchDaily();
+  }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleComplete = async (results: TrackVoteResult[]) => {
     setVoteResults(results);
     setShowReveal(true);
+    await fetch("/api/daily/complete", { method: "POST" });
     if (crowdTimerRef.current) clearTimeout(crowdTimerRef.current);
     crowdTimerRef.current = setTimeout(async () => {
-      if (!playlist) return;
+      if (!dailyData?.playlist) return;
       try {
-        const res = await fetch(`/api/scores/${playlist.id}`);
-        if (!res.ok) throw new Error("Score fetch failed");
-        const data = await res.json();
-        setCrowdPct(data.score?.approval_pct ?? null);
+        const res = await fetch(`/api/scores/${dailyData.playlist.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setCrowdPct(data.score?.approval_pct ?? null);
+        }
       } catch {
         setCrowdPct(null);
       }
     }, 800);
   };
 
-  const handleNext = () => {
-    setCrowdPct(null);
-    setVoteResults([]);
-    setTracks([]);
-    fetchNext(playlist?.id);
-  };
+  const handleNext = () => fetchDaily();
+
+  const tracks = dailyData?.tracks ?? [];
+  const playlist = dailyData?.playlist ?? null;
 
   const { currentTrack, nextTrack, thirdTrack, currentIndex, total, progress, streak, dopamineEvent, vote } =
     useVoteSession({
@@ -75,14 +89,11 @@ export default function DiscoverPage() {
     });
 
   const itunesPreviews = useItunesPreviews(tracks, currentIndex);
-
-  // Derive kept/removed counts from results for StreakCounter
   const keptCount = voteResults.filter((r) => r.vote).length;
   const removedCount = voteResults.filter((r) => !r.vote).length;
-
   const progressPct = Math.round(progress * 100);
 
-  if (status === "loading" || feedLoading) {
+  if (status === "loading" || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 rounded-full border-2 border-spotify-green border-t-transparent animate-spin" />
@@ -90,12 +101,20 @@ export default function DiscoverPage() {
     );
   }
 
-  if (exhausted) {
+  if (dailyData?.done) {
+    const message = dailyData.weekComplete
+      ? "You've voted on every playlist this week 🏆"
+      : dailyData.comeBackTomorrow
+      ? "You're done for today. Come back tomorrow!"
+      : "No playlists yet this week. Check back soon.";
+
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
-        <p className="text-4xl">🎵</p>
-        <p className="text-white font-bold text-lg">You&apos;ve heard everything</p>
-        <p className="text-subtext text-sm">Check back later — new playlists are added all the time.</p>
+        <p className="text-4xl">{dailyData.weekComplete ? "🏆" : "🎵"}</p>
+        <p className="text-white font-bold text-lg">{message}</p>
+        {dailyData.comeBackTomorrow && (
+          <p className="text-subtext text-sm">Your daily streak is safe. See you tomorrow.</p>
+        )}
         <button
           onClick={() => router.push("/submit")}
           className="mt-4 px-6 py-3 rounded-2xl bg-spotify-green text-black font-black text-sm"
@@ -119,7 +138,6 @@ export default function DiscoverPage() {
 
   return (
     <main className="min-h-screen flex flex-col max-w-md mx-auto px-4 py-6 relative">
-      {/* Top bar */}
       <motion.div
         className="flex items-center justify-between mb-4"
         initial={{ opacity: 0, y: -10 }}
@@ -130,26 +148,15 @@ export default function DiscoverPage() {
             {playlist?.name ?? "Loading..."}
           </p>
           <p className="text-subtext text-xs">by {playlist?.owner_display_name}</p>
+          {dailyData?.totalThisWeek && (
+            <p className="text-subtext text-xs mt-0.5">
+              {(dailyData.doneThisWeek ?? 0) + 1} of {dailyData.totalThisWeek} this week
+            </p>
+          )}
         </div>
-        <button
-          onClick={() => router.push("/dashboard")}
-          className="text-subtext hover:text-white transition-colors p-1 text-xs"
-          title="Your stats"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className="w-5 h-5"
-          >
-            <circle cx="12" cy="8" r="4" />
-            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" strokeLinecap="round" />
-          </svg>
-        </button>
+        <UserMenu />
       </motion.div>
 
-      {/* Progress bar */}
       <div className="mb-4 h-[2px] bg-white/10 rounded-full overflow-hidden">
         <motion.div
           className="h-full rounded-full"
@@ -173,7 +180,7 @@ export default function DiscoverPage() {
               thirdTrack={thirdTrack}
               onSwipe={vote}
               previewUrl={itunesPreviews[currentTrack.id] ?? currentTrack.preview_url ?? null}
-              disabled={tracksLoading}
+              disabled={loading}
             />
           )}
         </AnimatePresence>
@@ -184,14 +191,8 @@ export default function DiscoverPage() {
         <ActionButtons
           onRemove={() => stackRef.current?.swipe("remove")}
           onKeep={() => stackRef.current?.swipe("keep")}
-          disabled={!currentTrack || tracksLoading}
+          disabled={!currentTrack || loading}
         />
-        <button
-          onClick={() => playlist && handleNext()}
-          className="w-full text-center text-subtext text-xs mt-3 hover:text-white transition-colors"
-        >
-          Skip playlist →
-        </button>
       </div>
     </main>
   );
