@@ -15,15 +15,15 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await req.json();
-  const { status } = body as { status: "approved" | "rejected" };
+  const { status } = body as { status: unknown };
 
-  if (!["approved", "rejected"].includes(status)) {
+  if (status !== "approved" && status !== "rejected") {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
   const { error } = await supabase
     .from("nominations")
-    .update({ status })
+    .update({ status: status as "approved" | "rejected" })
     .eq("id", id);
 
   if (error) {

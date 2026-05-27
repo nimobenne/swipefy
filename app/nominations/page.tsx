@@ -21,12 +21,18 @@ export default function NominationsPage() {
   const [userVotes, setUserVotes] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [voting, setVoting] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchNominations = async () => {
-    const res = await fetch("/api/nominations");
-    const data = await res.json();
-    setNominations(data.nominations ?? []);
-    setUserVotes(new Set(data.userVotes ?? []));
+    try {
+      const res = await fetch("/api/nominations");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to load");
+      setNominations(data.nominations ?? []);
+      setUserVotes(new Set(data.userVotes ?? []));
+    } catch (err) {
+      setError(String(err));
+    }
   };
 
   useEffect(() => {
@@ -54,6 +60,8 @@ export default function NominationsPage() {
           else next.delete(id);
           return next;
         });
+      } else {
+        setError("Vote failed. Try again.");
       }
     } finally {
       setVoting(null);
@@ -108,6 +116,12 @@ export default function NominationsPage() {
             >
               Nominate a playlist
             </button>
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+            {error}
           </div>
         )}
 

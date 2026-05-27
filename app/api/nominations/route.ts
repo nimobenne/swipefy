@@ -61,15 +61,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json();
+  let body: { spotifyUrl?: unknown; pitch?: unknown };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
   const { spotifyUrl, pitch } = body as { spotifyUrl: string; pitch: string };
 
   if (!spotifyUrl?.trim() || !pitch?.trim()) {
     return NextResponse.json({ error: "Missing spotifyUrl or pitch" }, { status: 400 });
   }
 
-  if (!spotifyUrl.includes("spotify.com/playlist/")) {
-    return NextResponse.json({ error: "Must be a Spotify playlist URL" }, { status: 400 });
+  try {
+    const u = new URL(spotifyUrl.trim());
+    if (u.hostname !== "open.spotify.com" || !u.pathname.startsWith("/playlist/")) {
+      return NextResponse.json({ error: "Must be a Spotify playlist URL" }, { status: 400 });
+    }
+  } catch {
+    return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
   }
 
   if (pitch.length > 120) {

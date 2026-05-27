@@ -15,7 +15,7 @@ interface AdminNomination {
 }
 
 export default function AdminPage() {
-  const { data: session, status } = useSession({ required: true });
+  const { status } = useSession({ required: true });
   const router = useRouter();
   const [nominations, setNominations] = useState<AdminNomination[]>([]);
   const [weekOf, setWeekOf] = useState("");
@@ -38,11 +38,15 @@ export default function AdminPage() {
   const updateStatus = async (id: string, newStatus: "approved" | "rejected") => {
     setUpdating(id);
     try {
-      await fetch(`/api/admin/nominations/${id}`, {
+      const res = await fetch(`/api/admin/nominations/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
+      if (!res.ok) {
+        console.error("[admin] update failed", await res.text());
+        return;
+      }
       setNominations((prev) =>
         prev.map((n) => (n.id === id ? { ...n, status: newStatus } : n))
       );

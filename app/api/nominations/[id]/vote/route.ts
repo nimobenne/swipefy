@@ -14,6 +14,11 @@ export async function POST(
 
   const { id: nominationId } = await params;
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_RE.test(nominationId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const { data: nomination } = await supabase
     .from("nominations")
     .select("id, status")
@@ -35,17 +40,25 @@ export async function POST(
     .single();
 
   if (existing) {
-    await supabase
+    const { error: deleteError } = await supabase
       .from("nomination_votes")
       .delete()
       .eq("nomination_id", nominationId)
       .eq("user_id", session.userId);
+    if (deleteError) {
+      console.error("[vote] delete failed", deleteError.message);
+      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    }
     return NextResponse.json({ ok: true, voted: false });
   } else {
-    await supabase.from("nomination_votes").insert({
+    const { error: insertError } = await supabase.from("nomination_votes").insert({
       nomination_id: nominationId,
       user_id: session.userId,
     });
+    if (insertError) {
+      console.error("[vote] insert failed", insertError.message);
+      return NextResponse.json({ error: insertError.message }, { status: 500 });
+    }
     return NextResponse.json({ ok: true, voted: true });
   }
 }
