@@ -116,8 +116,14 @@ export default function DiscoverPage() {
           <p className="text-subtext text-sm">Your daily streak is safe. See you tomorrow.</p>
         )}
         <button
-          onClick={() => router.push("/submit")}
+          onClick={() => router.push("/leaderboard")}
           className="mt-4 px-6 py-3 rounded-2xl bg-spotify-green text-black font-black text-sm"
+        >
+          View leaderboard →
+        </button>
+        <button
+          onClick={() => router.push("/submit")}
+          className="px-6 py-3 rounded-2xl bg-white/10 text-white font-semibold text-sm hover:bg-white/15 transition-colors"
         >
           Submit your playlist
         </button>
