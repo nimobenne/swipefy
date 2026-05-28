@@ -44,7 +44,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (!tracks.length) {
-    return NextResponse.json({ error: "Playlist has no tracks." }, { status: 422 });
+    console.error("[admin/spotify/add] 0 tracks parsed for playlist", spotifyPlaylistId, "metadata:", JSON.stringify(metadata));
+    return NextResponse.json({
+      error: `Playlist returned 0 playable tracks. This usually means the playlist contains only local files or Spotify dev mode is restricting access. Playlist: ${metadata.name} (${metadata.trackCount} total per Spotify).`,
+    }, { status: 422 });
   }
 
   const { error } = await getSupabase()
