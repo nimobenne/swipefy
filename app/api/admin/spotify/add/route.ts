@@ -2,7 +2,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { isAdmin } from "@/lib/admin";
 import { getAdminAccessToken } from "@/lib/spotify-admin-token";
-import { getPlaylistMetadataWithToken, getPlaylistTracksWithToken } from "@/lib/spotify";
+import {
+  getPlaylistMetadataWithToken,
+  getPlaylistTracksWithToken,
+  getPlaylistMetadata,
+  getPlaylistTracks,
+} from "@/lib/spotify";
 import { getSupabase } from "@/lib/supabase";
 import { currentWeekStart } from "@/lib/weekly";
 import { NextRequest, NextResponse } from "next/server";
@@ -25,29 +30,38 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "no_spotify_token" }, { status: 401 });
   }
 
+  // Try user token first (needed for private playlists).
+  // Fall back to client credentials for public playlists not owned by the admin
+  // — Spotify dev mode restricts track data for non-owned playlists via user tokens.
   let metadata, tracks;
   try {
     metadata = await getPlaylistMetadataWithToken(spotifyPlaylistId, accessToken);
+    tracks = await getPlaylistTracksWithToken(spotifyPlaylistId, accessToken);
   } catch (e) {
     return NextResponse.json(
       { error: `Could not load playlist: ${e instanceof Error ? e.message : e}` },
       { status: 500 }
     );
   }
-  try {
-    tracks = await getPlaylistTracksWithToken(spotifyPlaylistId, accessToken);
-  } catch (e) {
-    return NextResponse.json(
-      { error: `Could not load tracks: ${e instanceof Error ? e.message : e}` },
-      { status: 500 }
-    );
+
+  if (!tracks.length) {
+    // User token returned 0 tracks — fall back to client credentials (public playlists)
+    try {
+      metadata = await getPlaylistMetadata(spotifyPlaylistId);
+      tracks = await getPlaylistTracks(spotifyPlaylistId);
+    } catch (e) {
+      return NextResponse.json(
+        { error: `Could not load playlist tracks: ${e instanceof Error ? e.message : e}` },
+        { status: 500 }
+      );
+    }
   }
 
   if (!tracks.length) {
-    console.error("[admin/spotify/add] 0 tracks parsed for playlist", spotifyPlaylistId, "metadata:", JSON.stringify(metadata));
-    return NextResponse.json({
-      error: `Playlist returned 0 playable tracks. This usually means the playlist contains only local files or Spotify dev mode is restricting access. Playlist: ${metadata.name} (${metadata.trackCount} total per Spotify).`,
-    }, { status: 422 });
+    return NextResponse.json(
+      { error: "Playlist has no playable tracks. Make sure it is public and not empty." },
+      { status: 422 }
+    );
   }
 
   const { error } = await getSupabase()
