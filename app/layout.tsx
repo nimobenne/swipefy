@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Outfit } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 
-const inter = Inter({
+const outfit = Outfit({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800", "900"],
-  variable: "--font-inter",
+  variable: "--font-outfit",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Swipefy — Curate your Spotify",
-  description: "Tinder for your Spotify playlists. Swipe to keep or remove tracks.",
+  title: "Swipefy — Rate music. Build taste.",
+  description: "Swipe tracks. Score playlists. See where your taste lands.",
   icons: { icon: "/favicon.ico" },
 };
 
@@ -22,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={outfit.variable}>
       <body className="font-sans antialiased bg-swipe-bg text-white min-h-screen">
         <Providers>{children}</Providers>
       </body>

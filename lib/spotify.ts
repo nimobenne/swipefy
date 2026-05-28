@@ -94,39 +94,69 @@ interface TracksPage {
   total?: number;
 }
 
-export async function getPlaylistTracks(
-  playlistId: string
-): Promise<SpotifyTrack[]> {
-  return getPlaylistTracksWithToken(playlistId, await getClientCredentialsToken());
+interface FullPlaylistResponse {
+  tracks: {
+    items: { track?: RawItem | null; item?: RawItem | null }[];
+    next: string | null;
+    total?: number;
+  };
+}
+
+function parseTracksFromItems(
+  items: { track?: RawItem | null; item?: RawItem | null }[]
+): SpotifyTrack[] {
+  const out: SpotifyTrack[] = [];
+  for (const raw of items) {
+    const t = raw.track ?? raw.item;
+    if (t?.id && t.name && t.artists?.length && t.album) {
+      out.push({
+        id: t.id,
+        name: t.name,
+        artists: t.artists,
+        album: t.album,
+        preview_url: t.preview_url ?? null,
+        duration_ms: t.duration_ms ?? 0,
+      });
+    }
+  }
+  return out;
+}
+
+export async function getPlaylistTracks(playlistId: string): Promise<SpotifyTrack[]> {
+  const token = await getClientCredentialsToken();
+
+  // Fetch full playlist object — no fields filter so we get tracks.items without syntax guessing.
+  // Works for public playlists with client credentials. Default limit is 100 tracks per page.
+  const data = await spotifyFetch<FullPlaylistResponse>(`/playlists/${playlistId}`, token);
+
+  const tracks = parseTracksFromItems(data.tracks?.items ?? []);
+
+  let url = data.tracks?.next ?? null;
+  while (url) {
+    const page = await spotifyFetch<{ items: FullPlaylistResponse["tracks"]["items"]; next: string | null }>(url, token);
+    tracks.push(...parseTracksFromItems(page.items ?? []));
+    url = page.next ?? null;
+  }
+
+  return tracks;
 }
 
 export async function getPlaylistTracksWithToken(
   playlistId: string,
   accessToken: string
 ): Promise<SpotifyTrack[]> {
-  const tracks: SpotifyTrack[] = [];
-  let url: string | null = `/playlists/${playlistId}/tracks?limit=100`;
+  // Use full playlist object endpoint, NOT /items — the dedicated /items endpoint
+  // returns 403 with user tokens in Spotify Dev Mode (Feb 2026 restrictions).
+  const data = await spotifyFetch<FullPlaylistResponse>(`/playlists/${playlistId}`, accessToken);
+  const tracks = parseTracksFromItems(data.tracks?.items ?? []);
 
+  let url = data.tracks?.next ?? null;
   while (url) {
-    const page: TracksPage = await spotifyFetch<TracksPage>(url, accessToken);
-    console.log("[spotify] page items:", page.items?.length, "next:", !!page.next, "first raw:", JSON.stringify(page.items?.[0]).slice(0, 200));
-    for (const raw of page.items) {
-      const t = raw.item ?? raw.track;
-      if (t?.id && t.name && t.artists && t.album) {
-        tracks.push({
-          id: t.id,
-          name: t.name,
-          artists: t.artists,
-          album: t.album,
-          preview_url: t.preview_url ?? null,
-          duration_ms: t.duration_ms ?? 0,
-        });
-      }
-    }
-    url = page.next;
+    const page = await spotifyFetch<{ items: FullPlaylistResponse["tracks"]["items"]; next: string | null }>(url, accessToken);
+    tracks.push(...parseTracksFromItems(page.items ?? []));
+    url = page.next ?? null;
   }
 
-  console.log("[spotify] total tracks parsed:", tracks.length);
   return tracks;
 }
 

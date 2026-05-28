@@ -20,7 +20,7 @@ export default function SwipePage({ params }: PageProps) {
   const searchParams = useSearchParams();
   const playlistName = searchParams.get("name") ?? "Playlist";
 
-  const { data: session, status } = useSession({ required: true });
+  const { status } = useSession({ required: true });
   const router = useRouter();
 
   const [tracks, setTracks] = useState<SpotifyTrack[]>([]);
@@ -42,15 +42,14 @@ export default function SwipePage({ params }: PageProps) {
   }, [status, playlistId]);
 
   const handleComplete = (kept: SpotifyTrack[], removed: SpotifyTrack[]) => {
-    // Store removed tracks + token so results page can apply to Spotify client-side
-    if (removed.length > 0 && session?.accessToken) {
+    // Store removed track info for the results page (display only — no Spotify writes)
+    if (removed.length > 0) {
       sessionStorage.setItem(
         `swipefy_removals_${playlistId}`,
         JSON.stringify({
           playlistId,
           trackIds: removed.map((t) => t.id),
           trackNames: removed.map((t) => `${t.name} — ${t.artists[0]?.name ?? ""}`),
-          accessToken: session.accessToken,
         })
       );
     }

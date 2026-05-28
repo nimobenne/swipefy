@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { createClient } from "@supabase/supabase-js";
 import TrackBreakdown from "@/components/TrackBreakdown";
+import UserMenu from "@/components/UserMenu";
 import { SpotifyTrack } from "@/types";
 
 interface SubmittedPlaylist {
@@ -88,26 +89,38 @@ export default function DashboardPage() {
   if (status === "loading" || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-spotify-green border-t-transparent animate-spin" />
+        <div
+          className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+          style={{ borderColor: "#22E05A33", borderTopColor: "#22E05A" }}
+        />
       </div>
     );
   }
 
   if (!playlist) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
-        <p className="text-4xl">🎵</p>
-        <p className="text-white font-bold text-lg">No playlist submitted yet</p>
-        <p className="text-subtext text-sm">Submit one to get your approval score.</p>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center"
+      >
+        <p className="text-5xl">🎵</p>
+        <p className="text-white font-black text-xl" style={{ letterSpacing: "-0.02em" }}>Nothing submitted yet</p>
+        <p className="text-sm" style={{ color: "#555" }}>Submit a playlist to see your approval score.</p>
         <button
           onClick={() => router.push("/submit")}
-          className="mt-4 px-6 py-3 rounded-2xl bg-spotify-green text-black font-black text-sm"
+          className="mt-2 px-6 py-3.5 rounded-2xl font-black text-sm"
+          style={{ background: "linear-gradient(135deg, #22E05A, #17b549)", color: "#080808", boxShadow: "0 4px 20px rgba(34,224,90,0.25)" }}
         >
           Submit a playlist
         </button>
-      </div>
+      </motion.div>
     );
   }
+
+  const approvalColor = score
+    ? score.approval_pct >= 70 ? "#22E05A" : score.approval_pct >= 40 ? "#FF9800" : "#F0248F"
+    : "#22E05A";
 
   return (
     <main className="min-h-screen px-5 py-8 max-w-2xl mx-auto">
@@ -116,58 +129,74 @@ export default function DashboardPage() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-6"
       >
-        <button
-          onClick={() => router.push("/discover")}
-          className="text-subtext hover:text-white transition-colors mb-4 flex items-center gap-1 text-sm"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
-            <path d="M19 12H5M12 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Back to discover
-        </button>
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={() => router.push("/discover")}
+            className="flex items-center gap-1 text-sm transition-colors"
+            style={{ color: "#555" }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+              <path d="M19 12H5M12 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Back
+          </button>
+          <UserMenu />
+        </div>
 
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center gap-4 mb-7">
           {playlist.cover_url && (
-            <img src={playlist.cover_url} alt={playlist.name} className="w-16 h-16 rounded-xl object-cover" />
+            <img
+              src={playlist.cover_url}
+              alt={playlist.name}
+              className="w-16 h-16 rounded-2xl object-cover flex-shrink-0"
+              style={{ boxShadow: "0 0 20px rgba(34,224,90,0.15)" }}
+            />
           )}
-          <div>
-            <h1 className="text-white text-xl font-black">{playlist.name}</h1>
-            <p className="text-subtext text-sm">{playlist.track_count} tracks</p>
+          <div className="min-w-0">
+            <h1 className="text-white font-black truncate" style={{ fontSize: "22px", letterSpacing: "-0.02em" }}>
+              {playlist.name}
+            </h1>
+            <p className="text-sm mt-0.5" style={{ color: "#555" }}>{playlist.track_count} tracks</p>
           </div>
         </div>
 
-        {score && (
+        {score ? (
           <div className="grid grid-cols-3 gap-3 mb-8">
-            <div className="bg-white/5 rounded-2xl p-4 text-center">
-              <div
-                className="text-3xl font-black mb-1"
-                style={{ color: score.approval_pct >= 70 ? "#1DB954" : score.approval_pct >= 40 ? "#FF9800" : "#E91E8C" }}
+            {[
+              { value: `${score.approval_pct}%`, label: "Approval", color: approvalColor },
+              { value: score.total_votes, label: "Votes", color: "white" },
+              { value: score.unique_voters, label: "Listeners", color: "white" },
+            ].map(({ value, label, color }, i) => (
+              <motion.div
+                key={label}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.07 }}
+                className="rounded-2xl p-4 text-center"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
               >
-                {score.approval_pct}%
-              </div>
-              <div className="text-subtext text-xs uppercase tracking-wider">Approval</div>
-            </div>
-            <div className="bg-white/5 rounded-2xl p-4 text-center">
-              <div className="text-3xl font-black text-white mb-1">{score.total_votes}</div>
-              <div className="text-subtext text-xs uppercase tracking-wider">Votes</div>
-            </div>
-            <div className="bg-white/5 rounded-2xl p-4 text-center">
-              <div className="text-3xl font-black text-white mb-1">{score.unique_voters}</div>
-              <div className="text-subtext text-xs uppercase tracking-wider">Listeners</div>
-            </div>
+                <div className="text-3xl font-black mb-1" style={{ color, letterSpacing: "-0.03em" }}>
+                  {value}
+                </div>
+                <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#444" }}>
+                  {label}
+                </div>
+              </motion.div>
+            ))}
           </div>
-        )}
-
-        {!score && (
-          <div className="bg-white/5 rounded-2xl p-6 text-center mb-8">
-            <p className="text-subtext text-sm">No votes yet. Share your playlist to get the ball rolling.</p>
+        ) : (
+          <div
+            className="rounded-2xl p-6 text-center mb-8"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+          >
+            <p className="text-sm" style={{ color: "#555" }}>No votes yet. Share to get the ball rolling.</p>
           </div>
         )}
       </motion.div>
 
       {tracks.length > 0 && Object.keys(breakdown).length > 0 && (
         <>
-          <h2 className="text-white font-bold mb-3">Track breakdown</h2>
+          <h2 className="text-white font-bold mb-3" style={{ letterSpacing: "-0.01em" }}>Track breakdown</h2>
           <TrackBreakdown tracks={tracks} breakdown={breakdown} />
         </>
       )}
@@ -175,13 +204,15 @@ export default function DashboardPage() {
       <div className="mt-8 flex gap-3">
         <button
           onClick={() => router.push("/submit")}
-          className="flex-1 py-3 rounded-2xl bg-white/10 text-white font-semibold text-sm hover:bg-white/15 transition-colors"
+          className="flex-1 py-3.5 rounded-2xl font-semibold text-sm transition-colors"
+          style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}
         >
           Swap playlist
         </button>
         <button
           onClick={() => router.push("/discover")}
-          className="flex-1 py-3 rounded-2xl bg-spotify-green text-black font-black text-sm hover:bg-green-400 transition-colors"
+          className="flex-1 py-3.5 rounded-2xl font-black text-sm"
+          style={{ background: "linear-gradient(135deg, #22E05A, #17b549)", color: "#080808" }}
         >
           Rate others
         </button>

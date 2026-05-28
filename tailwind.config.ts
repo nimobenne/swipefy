@@ -10,22 +10,22 @@ const config: Config = {
     extend: {
       colors: {
         "spotify-green": "#1DB954",
-        "spotify-black": "#191414",
-        "swipe-bg": "#0A0A0A",
+        "spotify-black": "#0D0D0D",
+        "swipe-bg": "#080808",
         "card-bg": "#111118",
-        "keep": "#1DB954",
-        "remove": "#E91E8C",
-        "subtext": "#B3B3B3",
+        "keep": "#22E05A",
+        "remove": "#F0248F",
+        "subtext": "#8A8A8A",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["var(--font-outfit)", "system-ui", "sans-serif"],
       },
       animation: {
         "slide-up": "slideUp 0.3s ease-out",
         "pulse-green": "pulseGreen 0.6s ease-out",
         "pulse-magenta": "pulseMagenta 0.6s ease-out",
         "heart-burst": "heartBurst 0.5s ease-out forwards",
-        "streak-pop": "streakPop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)",
+        "streak-pop": "streakPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
         "card-enter": "cardEnter 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
         "shimmer": "shimmer 2s linear infinite",
         "bar1": "bar1 1.2s ease-in-out infinite",
@@ -33,6 +33,9 @@ const config: Config = {
         "bar3": "bar3 1.4s ease-in-out infinite",
         "bar4": "bar4 0.9s ease-in-out infinite",
         "bar5": "bar5 1.1s ease-in-out infinite",
+        "glow-pulse-green": "glowPulseGreen 2s ease-in-out infinite",
+        "glow-pulse-magenta": "glowPulseMagenta 2s ease-in-out infinite",
+        "nav-active": "navActive 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
       },
       keyframes: {
         slideUp: {
@@ -71,6 +74,18 @@ const config: Config = {
         bar3: { "0%,100%": { height: "12px" }, "50%": { height: "36px" } },
         bar4: { "0%,100%": { height: "20px" }, "50%": { height: "32px" } },
         bar5: { "0%,100%": { height: "10px" }, "50%": { height: "24px" } },
+        glowPulseGreen: {
+          "0%,100%": { boxShadow: "0 0 10px rgba(34,224,90,0.3), 0 0 30px rgba(34,224,90,0.1)" },
+          "50%": { boxShadow: "0 0 20px rgba(34,224,90,0.6), 0 0 60px rgba(34,224,90,0.2)" },
+        },
+        glowPulseMagenta: {
+          "0%,100%": { boxShadow: "0 0 10px rgba(240,36,143,0.3), 0 0 30px rgba(240,36,143,0.1)" },
+          "50%": { boxShadow: "0 0 20px rgba(240,36,143,0.6), 0 0 60px rgba(240,36,143,0.2)" },
+        },
+        navActive: {
+          "0%": { transform: "scale(0.85)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
       },
       backgroundImage: {
         "keep-gradient": "linear-gradient(135deg, #1DB954, #17a349)",

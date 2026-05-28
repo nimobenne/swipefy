@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
     .eq("week_of", weekOf)
     .single();
 
-  if (!sample) {
+  if (!sample || !sample.sampled_tracks?.length) {
     const tracks = (next.tracks_json ?? []) as SpotifyTrack[];
     const sampled = sampleTracks(tracks, 15);
     const { error: sampleError } = await supabase.from("weekly_samples").upsert(

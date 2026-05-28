@@ -1,11 +1,20 @@
 "use client";
-import { use, useEffect } from "react";
+import { use, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 
 interface PageProps {
   params: Promise<{ playlistId: string }>;
 }
+
+interface RemovalData {
+  playlistId: string;
+  trackIds: string[];
+  trackNames: string[];
+  accessToken: string;
+}
+
+type CopyState = "idle" | "copied";
 
 const stat = {
   hidden: { opacity: 0, scale: 0.8, y: 20 },
@@ -17,6 +26,7 @@ const stat = {
   }),
 };
 
+
 export default function ResultsPage({ params }: PageProps) {
   const { playlistId } = use(params);
   const searchParams = useSearchParams();
@@ -27,6 +37,19 @@ export default function ResultsPage({ params }: PageProps) {
   const playlistName = searchParams.get("name") ?? "your playlist";
   const total = kept + removed;
   const keptPct = total > 0 ? Math.round((kept / total) * 100) : 0;
+
+  const [removalData, setRemovalData] = useState<RemovalData | null>(null);
+  const [copyState, setCopyState] = useState<CopyState>("idle");
+  const [showList, setShowList] = useState(false);
+
+  useEffect(() => {
+    const raw = sessionStorage.getItem(`swipefy_removals_${playlistId}`);
+    if (raw) {
+      try {
+        setRemovalData(JSON.parse(raw));
+      } catch { /* ignore */ }
+    }
+  }, [playlistId]);
 
   // Confetti on load
   useEffect(() => {
@@ -42,6 +65,20 @@ export default function ResultsPage({ params }: PageProps) {
       }, 500);
     });
   }, []);
+
+  const handleCopy = () => {
+    if (!removalData) return;
+    const text = removalData.trackNames.join("\n");
+    navigator.clipboard.writeText(text).then(() => {
+      setCopyState("copied");
+      setTimeout(() => setCopyState("idle"), 2000);
+    });
+  };
+
+  const spotifyPlaylistUrl =
+    playlistId === "liked"
+      ? "https://open.spotify.com/collection/tracks"
+      : `https://open.spotify.com/playlist/${playlistId}`;
 
   const getMessage = () => {
     if (keptPct >= 80) return { emoji: "🎵", text: "Curated with love!" };
@@ -72,9 +109,7 @@ export default function ResultsPage({ params }: PageProps) {
         <h1 className="text-3xl font-black">{text}</h1>
         <p className="text-subtext text-sm mt-2">
           You curated{" "}
-          <span className="text-white font-semibold">
-            {playlistName}
-          </span>
+          <span className="text-white font-semibold">{playlistName}</span>
         </p>
       </motion.div>
 
@@ -139,6 +174,70 @@ export default function ResultsPage({ params }: PageProps) {
           />
         </div>
       </motion.div>
+
+      {/* Tracks to remove */}
+      {removalData && removalData.trackIds.length > 0 && (
+        <motion.div
+          className="w-full mb-6"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.65 }}
+        >
+          <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(233,30,140,0.2)" }}>
+            {/* Header row */}
+            <div
+              className="flex items-center justify-between px-4 py-3 cursor-pointer"
+              style={{ background: "rgba(233,30,140,0.08)" }}
+              onClick={() => setShowList((v) => !v)}
+            >
+              <div>
+                <p className="text-white text-sm font-semibold">
+                  {removalData.trackIds.length} track{removalData.trackIds.length !== 1 ? "s" : ""} to remove
+                </p>
+                <p className="text-white/40 text-xs">Open Spotify → manually delete these</p>
+              </div>
+              <svg
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                className="w-4 h-4 text-white/40 shrink-0 transition-transform"
+                style={{ transform: showList ? "rotate(180deg)" : "rotate(0deg)" }}
+              >
+                <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+
+            {/* Track list */}
+            {showList && (
+              <div className="px-4 py-2 max-h-48 overflow-y-auto space-y-2" style={{ background: "rgba(0,0,0,0.2)" }}>
+                {removalData.trackNames.map((name, i) => (
+                  <p key={i} className="text-white/70 text-xs truncate">
+                    <span className="text-remove mr-2">✕</span>{name}
+                  </p>
+                ))}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="grid grid-cols-2 gap-px" style={{ background: "rgba(255,255,255,0.06)" }}>
+              <button
+                onClick={handleCopy}
+                className="py-3 text-xs font-semibold text-white/70 hover:text-white transition-colors"
+                style={{ background: "rgba(0,0,0,0.3)" }}
+              >
+                {copyState === "copied" ? "✓ Copied!" : "Copy list"}
+              </button>
+              <a
+                href={spotifyPlaylistUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-3 text-xs font-semibold text-spotify-green text-center hover:text-white transition-colors"
+                style={{ background: "rgba(0,0,0,0.3)" }}
+              >
+                Open in Spotify ↗
+              </a>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* CTAs */}
       <motion.div

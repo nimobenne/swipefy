@@ -19,11 +19,7 @@ export default function SubmitPage() {
   const [swapping, setSwapping] = useState(false);
   const [url, setUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    const p = new URLSearchParams(window.location.search).get("error");
-    return p ? `Spotify error: ${p.replace(/_/g, " ")}` : null;
-  });
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (status !== "authenticated" || !session?.userId) return;
@@ -39,19 +35,38 @@ export default function SubmitPage() {
       .then(({ data }) => setActive(data ?? null));
   }, [status, session?.userId]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const clean = url.trim().split("?")[0].split("#")[0];
     if (!clean) return;
     setSubmitting(true);
     setError(null);
-    window.location.href = `/api/spotify-auth?playlist_url=${encodeURIComponent(clean)}`;
+    try {
+      const res = await fetch("/api/submit-playlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playlistUrl: clean }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Submission failed");
+        setSubmitting(false);
+        return;
+      }
+      router.push("/dashboard");
+    } catch {
+      setError("Network error — try again");
+      setSubmitting(false);
+    }
   };
 
   if (status === "loading" || active === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-spotify-green border-t-transparent animate-spin" />
+        <div
+          className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+          style={{ borderColor: "#22E05A33", borderTopColor: "#22E05A" }}
+        />
       </div>
     );
   }
@@ -61,7 +76,8 @@ export default function SubmitPage() {
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         <button
           onClick={() => router.push("/discover")}
-          className="text-subtext hover:text-white transition-colors mb-6 flex items-center gap-1 text-sm"
+          className="flex items-center gap-1 text-sm mb-7 transition-colors"
+          style={{ color: "#555" }}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
             <path d="M19 12H5M12 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" />
@@ -71,31 +87,43 @@ export default function SubmitPage() {
 
         {active && !swapping ? (
           <>
-            <h1 className="text-white text-2xl font-black mb-1">Your playlist</h1>
-            <p className="text-subtext text-sm mb-6">Already in the pool and collecting votes.</p>
+            <h1 className="text-white font-black mb-0.5" style={{ fontSize: "26px", letterSpacing: "-0.03em" }}>
+              Your playlist
+            </h1>
+            <p className="text-sm mb-6" style={{ color: "#555" }}>In the pool, collecting votes.</p>
 
-            <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 mb-6">
+            <div
+              className="flex items-center gap-4 p-4 rounded-2xl mb-6"
+              style={{ background: "rgba(34,224,90,0.04)", border: "1px solid rgba(34,224,90,0.15)" }}
+            >
               {active.cover_url ? (
                 <img src={active.cover_url} alt={active.name} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
               ) : (
-                <div className="w-14 h-14 rounded-xl bg-white/10 flex items-center justify-center text-2xl flex-shrink-0">🎵</div>
+                <div
+                  className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+                  style={{ background: "rgba(255,255,255,0.07)" }}
+                >
+                  🎵
+                </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-white font-bold truncate">{active.name}</p>
-                <p className="text-subtext text-xs mt-0.5">{active.track_count} tracks</p>
+                <p className="text-white font-bold truncate" style={{ letterSpacing: "-0.01em" }}>{active.name}</p>
+                <p className="text-xs mt-0.5" style={{ color: "#555" }}>{active.track_count} tracks</p>
               </div>
             </div>
 
             <div className="flex flex-col gap-3">
               <button
                 onClick={() => router.push("/dashboard")}
-                className="py-3 rounded-2xl bg-spotify-green text-black font-black text-sm hover:bg-green-400 transition-colors"
+                className="py-3.5 rounded-2xl font-black text-sm"
+                style={{ background: "linear-gradient(135deg, #22E05A, #17b549)", color: "#080808", boxShadow: "0 4px 20px rgba(34,224,90,0.25)" }}
               >
                 See your score →
               </button>
               <button
                 onClick={() => setSwapping(true)}
-                className="py-3 rounded-2xl bg-white/10 text-white font-semibold text-sm hover:bg-white/15 transition-colors"
+                className="py-3.5 rounded-2xl font-semibold text-sm transition-colors"
+                style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}
               >
                 Swap to a different playlist
               </button>
@@ -103,35 +131,47 @@ export default function SubmitPage() {
           </>
         ) : (
           <>
-            <h1 className="text-white text-2xl font-black mb-1">
+            <h1 className="text-white font-black mb-0.5" style={{ fontSize: "26px", letterSpacing: "-0.03em" }}>
               {swapping ? "Swap playlist" : "Submit your playlist"}
             </h1>
-            <p className="text-subtext text-sm mb-6">
+            <p className="text-sm mb-6" style={{ color: "#555" }}>
               {swapping
-                ? "Your current playlist will be replaced. Paste the new one below."
-                : "Paste a public Spotify playlist link. Strangers rate every track. You get a live approval score."}
+                ? "Your current playlist will be replaced."
+                : "Paste a public Spotify link. Strangers rate every track."}
             </p>
 
             {error && (
-              <div className="mb-4 px-4 py-3 rounded-xl bg-remove/10 border border-remove/30 text-remove text-sm">
+              <div
+                className="mb-4 px-4 py-3 rounded-xl text-sm"
+                style={{ background: "rgba(240,36,143,0.08)", border: "1px solid rgba(240,36,143,0.2)", color: "#F0248F" }}
+              >
                 {error}
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
               <input
                 type="text"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://open.spotify.com/playlist/..."
-                className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-white placeholder-subtext text-sm focus:outline-none focus:border-spotify-green transition-colors"
+                className="w-full px-4 py-3.5 rounded-2xl text-white text-sm focus:outline-none transition-colors"
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  // @ts-ignore
+                  "--tw-ring-color": "#22E05A",
+                }}
+                onFocus={(e) => (e.target.style.borderColor = "rgba(34,224,90,0.5)")}
+                onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
                 disabled={submitting}
                 autoFocus
               />
               <button
                 type="submit"
                 disabled={submitting || !url.trim()}
-                className="py-3 rounded-2xl bg-spotify-green text-black font-black text-sm hover:bg-green-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="py-3.5 rounded-2xl font-black text-sm disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ background: "linear-gradient(135deg, #22E05A, #17b549)", color: "#080808", boxShadow: "0 4px 20px rgba(34,224,90,0.25)" }}
               >
                 {submitting ? (
                   <>
@@ -146,15 +186,16 @@ export default function SubmitPage() {
                 <button
                   type="button"
                   onClick={() => { setSwapping(false); setError(null); setUrl(""); }}
-                  className="py-3 rounded-2xl bg-white/5 text-subtext font-semibold text-sm hover:bg-white/10 transition-colors"
+                  className="py-3.5 rounded-2xl font-semibold text-sm transition-colors"
+                  style={{ background: "rgba(255,255,255,0.04)", color: "#555" }}
                 >
                   Cancel
                 </button>
               )}
             </form>
 
-            <p className="text-subtext text-xs mt-4 text-center">
-              The playlist must be public on Spotify.
+            <p className="text-xs mt-5 text-center" style={{ color: "#444" }}>
+              Playlist must be public on Spotify.
             </p>
           </>
         )}

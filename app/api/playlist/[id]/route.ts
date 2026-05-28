@@ -1,24 +1,23 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth-options";
-import { getPlaylistTracks } from "@/lib/spotify";
+import { getSupabase } from "@/lib/supabase";
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.accessToken) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { id } = await params;
+  const supabase = getSupabase();
 
-  try {
-    const tracks = await getPlaylistTracks(session.accessToken, id);
-    return NextResponse.json({ tracks });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: msg }, { status: 500 });
+  const { data, error } = await supabase
+    .from("public_playlists")
+    .select("tracks_json")
+    .eq("spotify_playlist_id", id)
+    .eq("is_active", true)
+    .single();
+
+  if (error || !data) {
+    return NextResponse.json({ error: "Playlist not found" }, { status: 404 });
   }
+
+  return NextResponse.json({ tracks: data.tracks_json ?? [] });
 }

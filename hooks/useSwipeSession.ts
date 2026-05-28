@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { SpotifyTrack, SwipeDirection, StreakState, DopamineEvent } from "@/types";
 
 interface UseSwipeSessionProps {
@@ -8,30 +8,8 @@ interface UseSwipeSessionProps {
   onComplete: (kept: SpotifyTrack[], removed: SpotifyTrack[]) => void;
 }
 
-function fireRemoveRequest(playlistId: string, trackId: string) {
-  const body = JSON.stringify({ trackId });
-  fetch(`/api/playlist/${playlistId}/remove`, {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body,
-  })
-    .then((r) => {
-      if (!r.ok) r.json().then((d) => console.error("[Swipefy] Remove failed:", d.error));
-    })
-    .catch(() => {
-      setTimeout(() => {
-        fetch(`/api/playlist/${playlistId}/remove`, {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body,
-        }).catch(() => console.warn("[Swipefy] Failed to remove track from Spotify:", trackId));
-      }, 1500);
-    });
-}
-
 export function useSwipeSession({
   tracks,
-  playlistId,
   onComplete,
 }: UseSwipeSessionProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -45,17 +23,6 @@ export function useSwipeSession({
     track: SpotifyTrack;
     timeoutId: ReturnType<typeof setTimeout>;
   } | null>(null);
-
-  // Flush pending removal on unmount (user navigated away mid-session)
-  useEffect(() => {
-    return () => {
-      if (pendingRemovalRef.current) {
-        clearTimeout(pendingRemovalRef.current.timeoutId);
-        fireRemoveRequest(playlistId, pendingRemovalRef.current.track.id);
-        pendingRemovalRef.current = null;
-      }
-    };
-  }, [playlistId]);
 
   const triggerDopamine = useCallback((event: DopamineEvent) => {
     setDopamineEvent(event);
@@ -78,16 +45,13 @@ export function useSwipeSession({
       } else {
         setRemoved((prev) => [...prev, track]);
 
-        // Flush any previous pending removal before queuing the new one
+        // Cancel previous undo window
         if (pendingRemovalRef.current) {
           clearTimeout(pendingRemovalRef.current.timeoutId);
-          fireRemoveRequest(playlistId, pendingRemovalRef.current.track.id);
-          pendingRemovalRef.current = null;
         }
 
-        // Buffer this removal — user has 4s to undo
+        // 4s undo window — just clears the toast, no API call here
         const timeoutId = setTimeout(() => {
-          fireRemoveRequest(playlistId, track.id);
           pendingRemovalRef.current = null;
           setPendingRemoval(null);
         }, 4000);
@@ -116,10 +80,8 @@ export function useSwipeSession({
 
       const nextIndex = currentIndex + 1;
       if (nextIndex >= tracks.length) {
-        // Flush pending removal before navigating to results
         if (pendingRemovalRef.current) {
           clearTimeout(pendingRemovalRef.current.timeoutId);
-          fireRemoveRequest(playlistId, pendingRemovalRef.current.track.id);
           pendingRemovalRef.current = null;
           setPendingRemoval(null);
         }
@@ -138,7 +100,7 @@ export function useSwipeSession({
         processingRef.current = false;
       }, 350);
     },
-    [currentIndex, tracks, kept, removed, playlistId, onComplete, triggerDopamine]
+    [currentIndex, tracks, kept, removed, onComplete, triggerDopamine]
   );
 
   const undoRemove = useCallback(() => {

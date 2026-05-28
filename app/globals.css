@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 :root {
-  --spotify-green: #1DB954;
-  --remove: #E91E8C;
-  --bg: #0A0A0A;
+  --keep: #22E05A;
+  --remove: #F0248F;
+  --bg: #080808;
 }
 
 * {
@@ -16,7 +16,7 @@ html,
 body {
   background-color: var(--bg);
   color: white;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-outfit), system-ui, sans-serif;
   overscroll-behavior: none;
 }
 
@@ -24,6 +24,10 @@ body {
 .no-select {
   -webkit-user-select: none;
   user-select: none;
+}
+
+input::placeholder {
+  color: #444;
 }
 
 /* Custom scrollbar */
@@ -34,7 +38,7 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 2px;
 }
 

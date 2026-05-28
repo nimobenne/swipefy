@@ -23,11 +23,12 @@ interface SwipeStackProps {
   nextTrack: SpotifyTrack | null;
   thirdTrack: SpotifyTrack | null;
   onSwipe: (direction: SwipeDirection) => void;
+  previewUrl?: string | null;
   disabled?: boolean;
 }
 
 const SwipeStack = forwardRef<SwipeStackHandle, SwipeStackProps>(
-  function SwipeStack({ currentTrack, nextTrack, thirdTrack, onSwipe, disabled }, ref) {
+  function SwipeStack({ currentTrack, nextTrack, thirdTrack, onSwipe, previewUrl, disabled }, ref) {
     const x = useMotionValue(0);
     const opacity = useMotionValue(1);
     const rotate = useTransform(x, [-300, 300], [-20, 20]);
@@ -35,17 +36,15 @@ const SwipeStack = forwardRef<SwipeStackHandle, SwipeStackProps>(
     const removeOpacity = useTransform(x, [-120, -20], [1, 0]);
     const firingRef = useRef(false);
 
-    const { playing, progress, play, pause } = useAudio(
-      currentTrack?.preview_url ?? null
-    );
+    const { playing, progress, play, pause } = useAudio(previewUrl ?? null);
 
     useEffect(() => {
-      if (currentTrack?.preview_url) {
+      if (previewUrl) {
         const t = setTimeout(() => play(), 350);
         return () => clearTimeout(t);
       }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentTrack?.id]);
+    }, [previewUrl]);
 
     const fireSwipe = useCallback(
       async (direction: SwipeDirection) => {

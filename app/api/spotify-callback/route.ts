@@ -5,15 +5,11 @@ import { currentWeekStart } from "@/lib/weekly";
 import crypto from "crypto";
 
 function extractPlaylistId(input: string): string | null {
-  // Decode in case the URL was double-encoded
   let decoded = input;
   try { decoded = decodeURIComponent(input); } catch { /* use as-is */ }
-  // Strip query string / fragment
   const clean = decoded.split("?")[0].split("#")[0].trim();
-  // https://open.spotify.com/playlist/ID or spotify:playlist:ID
   const urlMatch = clean.match(/playlist[/:]([A-Za-z0-9]+)/);
   if (urlMatch) return urlMatch[1];
-  // Raw ID
   if (/^[A-Za-z0-9]{10,40}$/.test(clean)) return clean;
   return null;
 }
@@ -33,7 +29,7 @@ export async function GET(req: NextRequest) {
     const dot = stateRaw.lastIndexOf(".");
     const payloadB64 = stateRaw.slice(0, dot);
     const sig = stateRaw.slice(dot + 1);
-    const payload = Buffer.from(payloadB64, "base64").toString();
+    const payload = Buffer.from(payloadB64, "base64url").toString();
     const expected = crypto.createHmac("sha256", process.env.NEXTAUTH_SECRET!).update(payload).digest("hex");
     if (sig !== expected) throw new Error("bad sig");
     ({ userId, playlistUrl } = JSON.parse(payload));
@@ -44,7 +40,7 @@ export async function GET(req: NextRequest) {
   const playlistId = extractPlaylistId(playlistUrl);
   if (!playlistId) return NextResponse.redirect(`${base}/submit?error=invalid_url`);
 
-  // Exchange code for Spotify access token
+  // Exchange code for Spotify user access token
   const creds = Buffer.from(`${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`).toString("base64");
   const tokenRes = await fetch("https://accounts.spotify.com/api/token", {
     method: "POST",
@@ -57,7 +53,6 @@ export async function GET(req: NextRequest) {
   });
   const tokenData = await tokenRes.json();
   if (!tokenData.access_token) {
-    console.error("[spotify-callback] token exchange failed", tokenData);
     return NextResponse.redirect(`${base}/submit?error=token_failed`);
   }
 
@@ -66,18 +61,19 @@ export async function GET(req: NextRequest) {
   let metadata, tracks;
   try {
     metadata = await getPlaylistMetadataWithToken(playlistId, token);
-    console.log("[spotify-callback] metadata ok:", metadata.name);
   } catch (e) {
-    console.error("[spotify-callback] metadata failed:", e instanceof Error ? e.message : String(e));
-    return NextResponse.redirect(`${base}/submit?error=metadata_failed`);
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.redirect(`${base}/submit?error=${encodeURIComponent(msg)}`);
   }
   try {
     tracks = await getPlaylistTracksWithToken(playlistId, token);
-    console.log("[spotify-callback] tracks ok:", tracks.length);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error("[spotify-callback] tracks failed:", msg);
     return NextResponse.redirect(`${base}/submit?error=${encodeURIComponent(msg)}`);
+  }
+
+  if (!tracks.length) {
+    return NextResponse.redirect(`${base}/submit?error=${encodeURIComponent("Spotify returned 0 tracks — make sure the playlist is public and owned by the Spotify account you logged in with")}`);
   }
 
   await supabase.from("public_playlists").update({ is_active: false }).eq("owner_id", userId).eq("is_active", true);
@@ -99,8 +95,7 @@ export async function GET(req: NextRequest) {
   );
 
   if (error) {
-    console.error("[spotify-callback] supabase upsert failed", error.message);
-    return NextResponse.redirect(`${base}/submit?error=save_failed`);
+    return NextResponse.redirect(`${base}/submit?error=${encodeURIComponent(`Save failed: ${error.message}`)}`);
   }
 
   return NextResponse.redirect(`${base}/dashboard`);

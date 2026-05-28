@@ -5,6 +5,6 @@ import LandingClient from "./LandingClient";
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
-  if (session?.accessToken) redirect("/discover");
+  if (session) redirect("/discover");
   return <LandingClient />;
 }

@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
   const { data: playlists, error } = await query;
 
   if (error) {
+    console.error("[feed] supabase query failed", { userId: session.userId, error: error.message });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
