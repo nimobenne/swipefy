@@ -45,13 +45,21 @@ export async function POST(req: NextRequest) {
   }
 
   if (!tracks.length) {
-    // User token returned 0 tracks — fall back to client credentials (public playlists)
+    // User token returned 0 tracks (Spotify dev mode restricts non-owned playlists).
+    // Fall back to client credentials which work for public playlists.
     try {
       metadata = await getPlaylistMetadata(spotifyPlaylistId);
       tracks = await getPlaylistTracks(spotifyPlaylistId);
     } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("404")) {
+        return NextResponse.json(
+          { error: "This playlist is private. Make it public on Spotify to add it, or apply for a Spotify Quota Extension to enable private playlist access." },
+          { status: 422 }
+        );
+      }
       return NextResponse.json(
-        { error: `Could not load playlist tracks: ${e instanceof Error ? e.message : e}` },
+        { error: `Could not load playlist tracks: ${msg}` },
         { status: 500 }
       );
     }
