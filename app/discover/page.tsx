@@ -97,44 +97,56 @@ export default function DiscoverPage() {
   if (status === "loading" || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-spotify-green border-t-transparent animate-spin" />
+        <div
+          className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+          style={{ borderColor: "#22E05A33", borderTopColor: "#22E05A" }}
+        />
       </div>
     );
   }
 
   if (dailyData?.done) {
     const message = dailyData.weekComplete
-      ? "You've voted on every playlist this week 🏆"
+      ? "You finished the whole week."
       : dailyData.comeBackTomorrow
-      ? "You're done for today. Come back tomorrow!"
-      : "No playlists yet this week. Check back soon.";
+      ? "Done for today."
+      : "No playlists yet this week.";
 
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
-        <p className="text-4xl">{dailyData.weekComplete ? "🏆" : "🎵"}</p>
-        <p className="text-white font-bold text-lg">{message}</p>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center"
+      >
+        <p className="text-5xl mb-1">{dailyData.weekComplete ? "🏆" : "🎵"}</p>
+        <p className="text-white font-black text-xl" style={{ letterSpacing: "-0.02em" }}>{message}</p>
         {dailyData.comeBackTomorrow && (
-          <p className="text-subtext text-sm">Your daily streak is safe. See you tomorrow.</p>
+          <p className="text-sm" style={{ color: "#555" }}>Your streak is safe. See you tomorrow.</p>
         )}
-        <button
-          onClick={() => router.push("/leaderboard")}
-          className="mt-4 px-6 py-3 rounded-2xl bg-spotify-green text-black font-black text-sm"
-        >
-          View leaderboard →
-        </button>
-        <button
-          onClick={() => router.push("/submit")}
-          className="px-6 py-3 rounded-2xl bg-white/10 text-white font-semibold text-sm hover:bg-white/15 transition-colors"
-        >
-          Submit your playlist
-        </button>
-        <button
-          onClick={() => router.push("/nominations")}
-          className="text-subtext text-xs hover:text-white transition-colors"
-        >
-          Vote on nominations for next week →
-        </button>
-      </div>
+        <div className="flex flex-col gap-3 w-full max-w-xs mt-4">
+          <button
+            onClick={() => router.push("/leaderboard")}
+            className="py-3.5 rounded-2xl font-black text-sm"
+            style={{ background: "linear-gradient(135deg, #22E05A, #17b549)", color: "#080808", boxShadow: "0 4px 20px rgba(34,224,90,0.25)" }}
+          >
+            View leaderboard →
+          </button>
+          <button
+            onClick={() => router.push("/submit")}
+            className="py-3.5 rounded-2xl font-semibold text-sm transition-colors"
+            style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            Submit your playlist
+          </button>
+          <button
+            onClick={() => router.push("/nominations")}
+            className="text-xs transition-colors"
+            style={{ color: "#444" }}
+          >
+            Vote on nominations →
+          </button>
+        </div>
+      </motion.div>
     );
   }
 
@@ -150,36 +162,32 @@ export default function DiscoverPage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col max-w-md mx-auto px-4 py-6 pb-24 relative">
+    <main className="min-h-screen flex flex-col max-w-md mx-auto px-4 py-5 pb-24 relative">
       <motion.div
-        className="flex items-center justify-between mb-4"
+        className="flex items-center justify-between mb-3"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div className="text-center flex-1">
-          <p className="text-white font-bold text-sm truncate max-w-[200px] mx-auto">
-            {playlist?.name ?? "Loading..."}
+        <div className="flex-1 min-w-0">
+          <p className="text-white font-black text-sm" style={{ letterSpacing: "-0.01em" }}>
+            {dailyData?.totalThisWeek
+              ? `${(dailyData.doneThisWeek ?? 0) + 1} of ${dailyData.totalThisWeek} this week`
+              : "Now playing"}
           </p>
-          <p className="text-subtext text-xs">by {playlist?.owner_display_name}</p>
-          {dailyData?.totalThisWeek && (
-            <p className="text-subtext text-xs mt-0.5">
-              {(dailyData.doneThisWeek ?? 0) + 1} of {dailyData.totalThisWeek} this week
-            </p>
-          )}
         </div>
         <UserMenu />
       </motion.div>
 
-      <div className="mb-4 h-[2px] bg-white/10 rounded-full overflow-hidden">
+      <div className="mb-3 h-[2px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.07)" }}>
         <motion.div
           className="h-full rounded-full"
-          style={{ background: "linear-gradient(90deg, #1DB954, #17a349)" }}
+          style={{ background: "linear-gradient(90deg, #22E05A, #17b549)" }}
           animate={{ width: `${progressPct}%` }}
-          transition={{ type: "spring", stiffness: 100 }}
+          transition={{ type: "spring", stiffness: 120, damping: 20 }}
         />
       </div>
 
-      <div className="mb-4">
+      <div className="mb-3">
         <StreakCounter streak={streak} kept={keptCount} removed={removedCount} total={total} />
       </div>
 
